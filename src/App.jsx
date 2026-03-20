@@ -592,7 +592,7 @@ function CustomerDataTab({sheetTabs,locations}){
   </div>);
 }
 
-async function captureTab(ref){return html2canvas(ref,{backgroundColor:"#edf1f7",scale:2,useCORS:true,logging:false});}
+async function captureTab(ref,opts={}){return html2canvas(ref,{backgroundColor:"#edf1f7",scale:opts.scale||2,useCORS:true,logging:false,width:opts.width||undefined});}
 
 export default function App(){
   const[data,setData]=useState([]);const[loading,setLoading]=useState(true);const[error,setError]=useState("");
@@ -659,7 +659,7 @@ export default function App(){
           setCaptureLoc(loc);
           await new Promise(r=>setTimeout(r,500));
           if(contentRef.current){
-            const canvas=await captureTab(contentRef.current);
+            const canvas=await captureTab(contentRef.current,{scale:1});
             const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.92));
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
             zip.file(`${tab.label}_${safeLoc}_${sp}.jpg`,blob);
@@ -715,7 +715,7 @@ export default function App(){
       </div>
     </div>
 
-    <div ref={contentRef} style={{padding:"24px 36px 48px"}}>
+    <div ref={contentRef} style={{padding:"24px 36px 48px",maxWidth:captureMode?1920:undefined}}>
       {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
