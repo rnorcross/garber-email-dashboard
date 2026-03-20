@@ -119,8 +119,9 @@ const FilterBar=({periods,sp,setSp,locations,selectedLoc,setSelectedLoc})=>(
   </div>
 );
 
-function GroupSalesTab({data,periods,sp,setSp,locations}){
-  const[loc,setLoc]=useState("");
+function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
+  const[internalLoc,setInternalLoc]=useState("");
+  const loc=captureMode&&captureLoc?captureLoc:internalLoc;
   const[newCustData,setNewCustData]=useState(null);
   const[prevNewCustData,setPrevNewCustData]=useState(null);
   const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
@@ -166,7 +167,8 @@ function GroupSalesTab({data,periods,sp,setSp,locations}){
 
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
-    <FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setLoc}/>
+    {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
+    {captureMode&&<div style={{padding:"12px 0 8px",fontSize:15,fontWeight:700,color:C.main}}>{loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
     <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
       <KPI label="Sales Engaged" value={cur.salesEngaged} color={C.main} sub={prv?<Badge cur={cur.salesEngaged} prev={prv.salesEngaged}/>:null}/>
       <KPI label="Sales Shoppers" value={cur.salesShoppers} color={C.acc1} sub={prv?<Badge cur={cur.salesShoppers} prev={prv.salesShoppers}/>:null}/>
@@ -184,7 +186,7 @@ function GroupSalesTab({data,periods,sp,setSp,locations}){
       <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
       <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+    {!captureMode&&<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
       <TrendChart data={filt} periods={last12} valueKey="salesShoppers" label="Sales Shoppers" color={C.acc1} aggFn={aggSales} filterLoc={loc}/>
       <TrendChart data={filt} periods={last12} valueKey="salesLeads" label="Sales Leads" color={C.sec} aggFn={aggSales} filterLoc={loc}/>
     </div>
@@ -195,19 +197,21 @@ function GroupSalesTab({data,periods,sp,setSp,locations}){
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <TrendChart data={filt} periods={last12} valueKey="salesGross" label="Sales Gross" color={C.green} fmt="money" aggFn={aggSales} filterLoc={loc}/>
       <TrendChart data={filt} periods={last12} valueKey="salesWinbackProfit" label="Winback Profit" color={C.purple} fmt="money" aggFn={aggSales} filterLoc={loc}/>
-    </div>
+    </div></>}
   </div>);
 }
 
-function GroupServiceTab({data,periods,sp,setSp,locations}){
-  const[loc,setLoc]=useState("");
+function GroupServiceTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
+  const[internalLoc,setInternalLoc]=useState("");
+  const loc=captureMode&&captureLoc?captureLoc:internalLoc;
   const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
   const filt=loc?data.filter(r=>r.location===loc):data;
   const cur=p?aggService(filterPeriod(filt,p)):null;const prv=prev?aggService(filterPeriod(filt,prev)):null;
   const last12=getLast12(periods,sp);
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
-    <FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setLoc}/>
+    {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
+    {captureMode&&<div style={{padding:"12px 0 8px",fontSize:15,fontWeight:700,color:C.main}}>{loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
     <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
       <KPI label="Service Shoppers" value={cur.serviceShoppers} color={C.main} sub={prv?<Badge cur={cur.serviceShoppers} prev={prv.serviceShoppers}/>:null}/>
       <KPI label="Service Leads" value={cur.serviceLeads} color={C.sec} sub={prv?<Badge cur={cur.serviceLeads} prev={prv.serviceLeads}/>:null}/>
@@ -219,19 +223,20 @@ function GroupServiceTab({data,periods,sp,setSp,locations}){
       <KPI label="Winback RO Value" value={cur.serviceWinbackROValue} fmt="money" color={C.purple} sub={prv?<MoneyBadge cur={cur.serviceWinbackROValue} prev={prv.serviceWinbackROValue}/>:null}/>
       <KPI label="Winback Service %" value={cur.winbackServicePct} fmt="pct" color={C.teal}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+    {!captureMode&&<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
       <TrendChart data={filt} periods={last12} valueKey="serviceShoppers" label="Service Shoppers" color={C.main} aggFn={aggService} filterLoc={loc}/>
       <TrendChart data={filt} periods={last12} valueKey="serviceLeads" label="Service Leads" color={C.sec} aggFn={aggService} filterLoc={loc}/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <TrendChart data={filt} periods={last12} valueKey="serviceROs" label="Service RO's" color={C.green} aggFn={aggService} filterLoc={loc}/>
       <TrendChart data={filt} periods={last12} valueKey="roValue" label="RO Value" color={C.amber} fmt="money" aggFn={aggService} filterLoc={loc}/>
-    </div>
+    </div></>}
   </div>);
 }
 
-function GroupAdsTab({data,periods,sp,setSp,locations}){
-  const[loc,setLoc]=useState("");
+function GroupAdsTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
+  const[internalLoc,setInternalLoc]=useState("");
+  const loc=captureMode&&captureLoc?captureLoc:internalLoc;
   const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
   const filt=loc?data.filter(r=>r.location===loc):data;
   const gCur=p?aggGoogle(filterPeriod(filt,p)):null;const gPrv=prev?aggGoogle(filterPeriod(filt,prev)):null;
@@ -243,15 +248,16 @@ function GroupAdsTab({data,periods,sp,setSp,locations}){
   const hasG=gCur.clicksGoogle>0||gCur.leadsGoogle>0||gCur.spendGoogle>0||gCur.pageViewsGoogle>0||gCur.phoneCallsGoogle>0;
   const hasF=fCur.clicksFB>0||fCur.leadsFB>0||fCur.spendFB>0||fCur.pageViewsFB>0||fCur.phoneCallsFB>0;
   return(<div>
-    <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
+    {!captureMode&&<div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
       <select value={sp} onChange={e=>setSp(e.target.value)} style={selStyle}>{periods.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>DEALERSHIP:</span>
-      <select value={loc} onChange={e=>setLoc(e.target.value)} style={{...selStyle,maxWidth:340}}>
+      <select value={loc} onChange={e=>setInternalLoc(e.target.value)} style={{...selStyle,maxWidth:340}}>
         <option value="">All Dealerships</option>
         {locations.map(l=><option key={l} value={l} disabled={!locsWithAdData.has(l)} style={{color:locsWithAdData.has(l)?C.main:"#ccc"}}>{l}{locsWithAdData.has(l)?"":" (no data)"}</option>)}
       </select>
-    </div>
+    </div>}
+    {captureMode&&<div style={{padding:"12px 0 8px",fontSize:15,fontWeight:700,color:C.main}}>{loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
     {hasG&&<Section title="Google Ads" desc="Performance metrics for Google search ads promoting service.">
       <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
         <KPI label="Clicks" value={gCur.clicksGoogle} color={C.main} sub={gPrv?<Badge cur={gCur.clicksGoogle} prev={gPrv.clicksGoogle}/>:null}/>
@@ -270,7 +276,7 @@ function GroupAdsTab({data,periods,sp,setSp,locations}){
         <KPI label="Spend" value={fCur.spendFB} fmt="money" color={C.amber}/>
       </div>
     </Section>}
-    {hasG&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+    {!captureMode&&<>{hasG&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
       <TrendChart data={filt} periods={last12} valueKey="clicksGoogle" label="Google Clicks" color={C.main} aggFn={aggGoogle} filterLoc={loc}/>
       <TrendChart data={filt} periods={last12} valueKey="leadsGoogle" label="Google Leads" color={C.sec} aggFn={aggGoogle} filterLoc={loc}/>
     </div>}
@@ -285,7 +291,7 @@ function GroupAdsTab({data,periods,sp,setSp,locations}){
     {hasF&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       <TrendChart data={filt} periods={last12} valueKey="pageViewsFB" label="Facebook Views" color={C.acc1} aggFn={aggFB} filterLoc={loc}/>
       <TrendChart data={filt} periods={last12} valueKey="phoneCallsFB" label="Facebook Phone Calls" color={C.green} aggFn={aggFB} filterLoc={loc}/>
-    </div>}
+    </div>}</>}
     {!hasG&&!hasF&&<div style={{padding:40,textAlign:"center",color:"#999"}}>No advertising data for this selection.</div>}
   </div>);
 }
@@ -591,6 +597,7 @@ export default function App(){
   const[activeTab,setActiveTab]=useState("groupSales");const[sp,setSp]=useState("");
   const[sheetTabs,setSheetTabs]=useState([]);const[refreshing,setRefreshing]=useState(false);
   const[downloading,setDownloading]=useState(false);const[dlProgress,setDlProgress]=useState("");
+  const[captureMode,setCaptureMode]=useState(false);const[captureLoc,setCaptureLoc]=useState("");
   const contentRef=useRef(null);
 
   const fetchData=useCallback(async(isRefresh)=>{
@@ -622,6 +629,7 @@ export default function App(){
   useEffect(()=>{fetchData(false);discoverTabs();},[fetchData,discoverTabs]);
   const periods=useMemo(()=>getPeriods(data),[data]);
   const locations=useMemo(()=>[...new Set(data.map(r=>r.location))].filter(l=>l).sort(),[data]);
+  const locsWithAdData=useMemo(()=>{const s=new Set();data.forEach(r=>{if(r.clicksGoogle>0||r.leadsGoogle>0||r.spendGoogle>0||r.pageViewsGoogle>0||r.phoneCallsGoogle>0||r.clicksFB>0||r.leadsFB>0||r.spendFB>0||r.pageViewsFB>0||r.phoneCallsFB>0)s.add(r.location);});return s;},[data]);
 
   const downloadJPG=async()=>{if(!contentRef.current||downloading)return;setDownloading(true);
     try{const canvas=await captureTab(contentRef.current);const link=document.createElement("a");
@@ -634,15 +642,33 @@ export default function App(){
       pdf.addImage(imgData,"JPEG",0,0,canvas.width,canvas.height);
       pdf.save(`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${sp}.pdf`);}catch(e){alert("Export failed: "+e.message);}
     setDownloading(false);};
-  const downloadAll=async()=>{if(downloading)return;setDownloading(true);
+  const downloadAll=async()=>{if(downloading)return;setDownloading(true);setCaptureMode(true);
     try{const zip=new JSZip();const origTab=activeTab;
-      for(const tab of TABS){setDlProgress(`Capturing ${tab.label}...`);setActiveTab(tab.id);
-        await new Promise(r=>setTimeout(r,400));if(contentRef.current){const canvas=await captureTab(contentRef.current);
-        const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.92));zip.file(`${tab.label.replace(/\s+/g,"_")}_${sp}.jpg`,blob);}}
-      setActiveTab(origTab);setDlProgress("Creating ZIP...");
+      const captureTabs=[
+        {id:"groupSales",label:"Sales_Email",locs:locations},
+        {id:"groupService",label:"Service_Email",locs:locations},
+        {id:"groupAds",label:"Advertising",locs:locations.filter(l=>locsWithAdData.has(l))},
+      ];
+      let count=0;const total=captureTabs.reduce((a,t)=>a+t.locs.length,0);
+      for(const tab of captureTabs){
+        setActiveTab(tab.id);
+        for(const loc of tab.locs){
+          count++;setDlProgress(`Capturing ${tab.label} - ${loc} (${count}/${total})...`);
+          setCaptureLoc(loc);
+          await new Promise(r=>setTimeout(r,500));
+          if(contentRef.current){
+            const canvas=await captureTab(contentRef.current);
+            const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.92));
+            const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
+            zip.file(`${tab.label}_${safeLoc}_${sp}.jpg`,blob);
+          }
+        }
+      }
+      setActiveTab(origTab);setCaptureMode(false);setCaptureLoc("");
+      setDlProgress("Creating ZIP...");
       const content=await zip.generateAsync({type:"blob"});const link=document.createElement("a");
       link.download=`Garber_Fullpath_Report_${sp}.zip`;link.href=URL.createObjectURL(content);link.click();
-    }catch(e){alert("Export failed: "+e.message);}
+    }catch(e){alert("Export failed: "+e.message);setCaptureMode(false);setCaptureLoc("");}
     setDlProgress("");setDownloading(false);};
 
   if(loading)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans',system-ui,sans-serif"}}>
@@ -688,9 +714,9 @@ export default function App(){
     </div>
 
     <div ref={contentRef} style={{padding:"24px 36px 48px"}}>
-      {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
-      {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
-      {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
+      {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
+      {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
+      {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="dealerSales"&&<DealerSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
       {activeTab==="dealerService"&&<DealerServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
       {activeTab==="customerData"&&<CustomerDataTab sheetTabs={sheetTabs} locations={locations}/>}
