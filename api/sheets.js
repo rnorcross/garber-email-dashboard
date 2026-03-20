@@ -100,6 +100,8 @@ export default async function handler(req, res) {
 
       const counts = {};
       let total = 0;
+      const condCounts = {};
+      const condTotal = { new: 0, used: 0 };
 
       for (let si = 0; si < valueRanges.length; si++) {
         const sheetTitle = dealerSheets[si];
@@ -112,7 +114,11 @@ export default async function handler(req, res) {
         const prevCustIdx = headers.findIndex((h) =>
           h.includes("previous") && h.includes("customer")
         );
-        if (prevCustIdx < 0) continue;
+
+        // Find "Condition" column (new vs used)
+        const conditionIdx = headers.findIndex((h) =>
+          h === "condition" || h === "new/used" || h === "new or used" || h.includes("condition")
+        );
 
         // Find date/month column (flexible matching)
         const dateIdx = headers.findIndex((h) =>
@@ -121,36 +127,25 @@ export default async function handler(req, res) {
         const monthIdx = headers.findIndex((h) => h === "month");
         const yearIdx = headers.findIndex((h) => h === "year");
 
-        let count = 0;
+        let newCustCount = 0;
+        let condNew = 0, condUsed = 0;
+
         for (let ri = 1; ri < rows.length; ri++) {
           const row = rows[ri];
-          const prevCust = (row[prevCustIdx] || "").trim().toUpperCase();
-          if (prevCust !== "N") continue;
 
-          // If no month/year filter requested, count all N's
-          if (!targetMonth && !targetYear) {
-            count++;
-            continue;
-          }
-
-          // Try to match month/year from the row
+          // Parse month/year for this row
           let rowMonth = 0, rowYear = 0;
-
-          // Method A: Separate month and year columns
           if (monthIdx >= 0 && yearIdx >= 0) {
             const mVal = (row[monthIdx] || "").trim().toLowerCase();
             rowMonth = MONTH_NAMES[mVal] || parseInt(mVal) || 0;
             rowYear = parseInt(row[yearIdx]) || 0;
-          }
-          // Method B: Parse a date column
-          else if (dateIdx >= 0) {
+          } else if (dateIdx >= 0) {
             const dateStr = (row[dateIdx] || "").trim();
             const parsed = new Date(dateStr);
             if (!isNaN(parsed.getTime())) {
               rowMonth = parsed.getMonth() + 1;
               rowYear = parsed.getFullYear();
             } else {
-              // Try "Month Year" format like "January 2025"
               const parts = dateStr.split(/[\s\/\-]+/);
               for (const part of parts) {
                 const ml = part.toLowerCase();
@@ -163,14 +158,30 @@ export default async function handler(req, res) {
 
           const monthMatch = !targetMonth || rowMonth === targetMonth;
           const yearMatch = !targetYear || rowYear === targetYear;
-          if (monthMatch && yearMatch) count++;
+          if (!monthMatch || !yearMatch) continue;
+
+          // Count new customers (Previous Customer = N)
+          if (prevCustIdx >= 0) {
+            const prevCust = (row[prevCustIdx] || "").trim().toUpperCase();
+            if (prevCust === "N") newCustCount++;
+          }
+
+          // Count condition (new vs used)
+          if (conditionIdx >= 0) {
+            const cond = (row[conditionIdx] || "").trim().toLowerCase();
+            if (cond === "new" || cond === "n") condNew++;
+            else if (cond === "used" || cond === "u" || cond === "pre-owned" || cond === "preowned") condUsed++;
+          }
         }
 
-        counts[sheetTitle] = count;
-        total += count;
+        counts[sheetTitle] = newCustCount;
+        total += newCustCount;
+        condCounts[sheetTitle] = { new: condNew, used: condUsed };
+        condTotal.new += condNew;
+        condTotal.used += condUsed;
       }
 
-      return res.status(200).json({ counts, total });
+      return res.status(200).json({ counts, total, condCounts, condTotal });
     }
 
     return res.status(400).json({ error: "Invalid request. Use ?action=list or ?action=data&sheetName=..." });
