@@ -6,7 +6,7 @@ import jsPDF from "jspdf";
 import JSZip from "jszip";
 
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTYVu1c2AZGFprO4Qk2sgvY6GDl1PuBAxW-7J5xg4xjIrz-ZCTaxn2oC2vVfCxECbGqOt6e9KkgAjHs/pub?output=csv";
-const SHEET_HTML_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTYVu1c2AZGFprO4Qk2sgvY6GDl1PuBAxW-7J5xg4xjIrz-ZCTaxn2oC2vVfCxECbGqOt6e9KkgAjHs/pubhtml";
+const SHEETS_API = "/api/sheets";
 const MN=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_MAP={January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12,Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
 const C={main:"#072a60",sec:"#0d6eff",acc1:"#1e88e5",green:"#0a8754",amber:"#c9710d",red:"#c0392b",bg:"#edf1f7",purple:"#7c3aed",teal:"#0d9488"};
@@ -395,81 +395,67 @@ function CustomerDataTab({sheetTabs,locations}){
   const[selectedTab,setSelectedTab]=useState("");
   const[custData,setCustData]=useState(null);const[custHeaders,setCustHeaders]=useState([]);
   const[loading,setLoading]=useState(false);const[error,setError]=useState("");
-  const[manualGid,setManualGid]=useState("");
   const{sortState,onSort,doSort}=useSort("col0","asc");
 
-  const discoveryFailed=sheetTabs.length===1&&sheetTabs[0].gid==="_NONE_";
-  const validTabs=discoveryFailed?[]:sheetTabs;
+  const apiFailed=sheetTabs.length===1&&(sheetTabs[0].name==="_API_ERROR_"||sheetTabs[0].name==="_DISCOVERY_FAILED_");
+  const validTabs=apiFailed?[]:sheetTabs;
 
-  const loadGid=useCallback(async(gid,label)=>{
-    if(!gid)return;setLoading(true);setError("");setCustData(null);
+  const loadSheet=useCallback(async(sheetName)=>{
+    if(!sheetName)return;setLoading(true);setError("");setCustData(null);
     try{
-      const url=SHEET_CSV_URL.replace("pub?output=csv","pub?gid="+gid+"&single=true&output=csv");
-      console.log("[CustomerData] Fetching gid="+gid,url);
-      const resp=await fetch(url);if(!resp.ok)throw new Error("HTTP "+resp.status+" - This sheet may not be published. Check your Google Sheet publish settings.");
-      const text=await resp.text();
-      if(text.includes("<!DOCTYPE")||text.includes("<html"))throw new Error("Google returned an HTML page instead of CSV. This sheet (gid="+gid+") may not be published to the web.");
-      const result=Papa.parse(text,{header:true,skipEmptyLines:true});
-      if(result.data&&result.data.length>0){
-        const headers=Object.keys(result.data[0]).filter(h=>h.trim()!=="");
-        setCustHeaders(headers);
-        setCustData(result.data.map((row,idx)=>{const obj={_idx:idx};headers.forEach((h,ci)=>{obj["col"+ci]=row[h]||"";});return obj;}));
-      }else{setError("No data found in this sheet (gid="+gid+").");}
+      const resp=await fetch(SHEETS_API+"?action=data&sheetName="+encodeURIComponent(sheetName));
+      if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||"HTTP "+resp.status);}
+      const{headers,data:records}=await resp.json();
+      if(records&&records.length>0){
+        const hdrs=(headers||[]).filter(h=>h.trim()!=="");
+        setCustHeaders(hdrs);
+        setCustData(records.map((row,idx)=>{const obj={_idx:idx};hdrs.forEach((h,ci)=>{obj["col"+ci]=row[h]||"";});return obj;}));
+      }else{setError("No data found in this sheet.");}
     }catch(e){setError(e.message);}
     setLoading(false);
   },[]);
 
   useEffect(()=>{
-    if(selectedTab&&validTabs.length){
-      const tab=validTabs.find(t=>t.name===selectedTab);
-      if(tab)loadGid(tab.gid,tab.name);
-    }
-  },[selectedTab,validTabs,loadGid]);
+    if(selectedTab&&validTabs.length){loadSheet(selectedTab);}
+  },[selectedTab,validTabs,loadSheet]);
 
   const sorted=custData?doSort(custData):[];
 
   return(<div>
-    {/* Normal mode: tabs were discovered */}
+    {/* Normal mode: tabs were discovered via API */}
     {validTabs.length>0&&(<div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>DEALERSHIP:</span>
       <select value={selectedTab} onChange={e=>setSelectedTab(e.target.value)} style={{...selStyle,maxWidth:400}}>
         <option value="">{"\u2014"} Select Dealership {"\u2014"}</option>
-        {validTabs.map(t=><option key={t.gid} value={t.name}>{t.name}</option>)}
+        {validTabs.map(t=><option key={t.sheetId} value={t.name}>{t.name}</option>)}
       </select>
       <span style={{fontSize:13,color:"#7a8a9a"}}>Customer-specific data from email marketing for <strong>Sales</strong></span>
     </div>)}
 
-    {/* Discovery failed: show instructions + manual GID input */}
-    {(discoveryFailed||sheetTabs.length===0)&&!loading&&!custData&&(<div style={{background:"white",borderRadius:14,padding:32,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",maxWidth:700,margin:"20px auto",textAlign:"left"}}>
-      <div style={{fontSize:20,fontWeight:800,color:C.main,marginBottom:16}}>
-        {sheetTabs.length===0?"\u23F3 Discovering dealership sheets...":"\u26A0\uFE0F Sheet Discovery Needs Your Help"}
+    {/* API error: show setup instructions */}
+    {apiFailed&&!loading&&!custData&&(<div style={{background:"white",borderRadius:14,padding:32,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",maxWidth:700,margin:"20px auto",textAlign:"left"}}>
+      <div style={{fontSize:20,fontWeight:800,color:C.main,marginBottom:16}}>{"\u26A0\uFE0F"} API Setup Required</div>
+      <p style={{fontSize:14,color:"#555",lineHeight:1.7,marginBottom:16}}>The Customer Data tab needs two environment variables set in your Vercel project settings. Check the deployment guide for step-by-step instructions:</p>
+      <div style={{background:"#f0f4ff",borderRadius:10,padding:20,marginBottom:12}}>
+        <div style={{fontWeight:700,color:C.main,fontSize:13,marginBottom:4}}>GOOGLE_API_KEY</div>
+        <div style={{fontSize:13,color:"#555"}}>A Google Cloud API key with Google Sheets API enabled</div>
       </div>
-      {discoveryFailed&&(<div>
-        <p style={{fontSize:14,color:"#555",lineHeight:1.7,marginBottom:16}}>The dashboard couldn't automatically find the dealership tabs in your Google Sheet. This usually means the individual sheets aren't published to the web yet. Here's how to fix it:</p>
-        <div style={{background:"#f0f4ff",borderRadius:10,padding:20,marginBottom:20}}>
-          <div style={{fontWeight:700,color:C.main,marginBottom:8}}>Option A: Publish All Sheets (recommended)</div>
-          <p style={{fontSize:13,color:"#555",lineHeight:1.8,margin:0}}>
-            1. Open your Google Sheet<br/>
-            2. Go to <strong>File {">"} Share {">"} Publish to web</strong><br/>
-            3. In the first dropdown, select <strong>"Entire Document"</strong> (not just one sheet)<br/>
-            4. Click <strong>Publish</strong>, then refresh this dashboard
-          </p>
-        </div>
-        <div style={{background:"#f0f4ff",borderRadius:10,padding:20,marginBottom:20}}>
-          <div style={{fontWeight:700,color:C.main,marginBottom:8}}>Option B: Enter a Sheet GID Manually</div>
-          <p style={{fontSize:13,color:"#555",lineHeight:1.8,margin:"0 0 12px"}}>
-            Open your Google Sheet, click on a dealership tab, and look at the URL bar. You'll see <strong>gid=XXXXXXX</strong> at the end. Enter that number below:
-          </p>
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-            <input type="text" value={manualGid} onChange={e=>setManualGid(e.target.value.replace(/\D/g,""))} placeholder="e.g. 1234567890" style={{padding:"10px 16px",borderRadius:10,border:"2px solid "+C.sec,fontSize:14,fontWeight:600,width:200,outline:"none"}}/>
-            <button onClick={()=>{if(manualGid)loadGid(manualGid,"Manual (gid="+manualGid+")")}} disabled={!manualGid} style={{padding:"10px 20px",borderRadius:10,background:manualGid?C.sec:"#ccc",color:"white",fontWeight:700,fontSize:14,border:"none",cursor:manualGid?"pointer":"not-allowed"}}>Load Sheet</button>
-          </div>
-        </div>
-      </div>)}
-      {sheetTabs.length===0&&!discoveryFailed&&(<div style={{textAlign:"center",padding:20}}>
-        <div style={{width:40,height:40,border:"4px solid "+C.sec,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite",margin:"0 auto 16px"}}/>
-        <div style={{fontSize:14,color:"#888"}}>Scanning your spreadsheet for dealership tabs...</div>
-      </div>)}
+      <div style={{background:"#f0f4ff",borderRadius:10,padding:20}}>
+        <div style={{fontWeight:700,color:C.main,fontSize:13,marginBottom:4}}>GOOGLE_SHEET_ID</div>
+        <div style={{fontSize:13,color:"#555"}}>The spreadsheet ID from your Google Sheet URL</div>
+      </div>
+    </div>)}
+
+    {/* Still loading tab list */}
+    {sheetTabs.length===0&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:"#aab"}}>
+      <div style={{width:40,height:40,border:"4px solid "+C.sec,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite",margin:"0 auto 16px"}}/>
+      <div style={{fontSize:14,color:"#888"}}>Loading dealership list...</div>
+    </div>)}
+
+    {/* Idle state: tabs loaded but nothing selected */}
+    {validTabs.length>0&&!selectedTab&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:"#aab"}}>
+      <div style={{fontSize:48,marginBottom:12}}>{"\ud83d\udcca"}</div>
+      <div style={{fontSize:16,fontWeight:600}}>Select a dealership above to view customer-specific data</div>
     </div>)}
 
     {loading&&<div style={{padding:40,textAlign:"center",color:C.sec,fontSize:16,fontWeight:600}}>
@@ -514,68 +500,18 @@ export default function App(){
   },[]);
 
   const discoverTabs=useCallback(async()=>{
-    console.log("[TabDiscovery] Starting...");
-    // APPROACH 1: Parse pubhtml using DOMParser (reliable browser-native HTML parsing)
     try{
-      const resp=await fetch(SHEET_HTML_URL);
-      if(resp.ok){
-        const html=await resp.text();
-        console.log("[TabDiscovery] Fetched pubhtml, length:",html.length);
-        const parser=new DOMParser();
-        const doc=parser.parseFromString(html,"text/html");
-        const tabs=[];
-        // Method A: sheet-button elements
-        doc.querySelectorAll("[id^='sheet-button-']").forEach(el=>{
-          const gid=el.id.replace("sheet-button-","");
-          const name=(el.textContent||"").trim();
-          if(gid&&name)tabs.push({gid,name});
-        });
-        // Method B: links with #gid=
-        if(tabs.length===0){doc.querySelectorAll("a[href*='gid=']").forEach(el=>{
-          const m=(el.getAttribute("href")||"").match(/gid=(\d+)/);
-          const name=(el.textContent||"").trim();
-          if(m&&name)tabs.push({gid:m[1],name});
-        });}
-        // Method C: onclick with switchToSheet
-        if(tabs.length===0){doc.querySelectorAll("[onclick*='switchToSheet']").forEach(el=>{
-          const m=(el.getAttribute("onclick")||"").match(/switchToSheet\s*\(\s*'?(\d+)'?\s*\)/);
-          const name=(el.textContent||"").trim();
-          if(m&&name)tabs.push({gid:m[1],name});
-        });}
-        // Method D: div IDs that are numeric and contain tables (each sheet is rendered as a div)
-        if(tabs.length===0){doc.querySelectorAll("div[id]").forEach(el=>{
-          if(/^\d+$/.test(el.id)&&el.querySelector("table")){
-            tabs.push({gid:el.id,name:"Sheet (gid="+el.id+")"});
-          }
-        });}
-        console.log("[TabDiscovery] Parsed tabs:",JSON.stringify(tabs));
-        const dealerTabs=tabs.filter(t=>{const lc=t.name.toLowerCase();return!lc.includes("overall")&&!lc.includes("sheet1")&&!lc.includes("template")&&t.name.length>1;});
-        if(dealerTabs.length>0){console.log("[TabDiscovery] SUCCESS via HTML:",dealerTabs.length,"tabs");setSheetTabs(dealerTabs);return;}
-      }
-    }catch(e){console.warn("[TabDiscovery] HTML approach failed:",e);}
-
-    // APPROACH 2: Probe GIDs by fetching CSV for each one
-    console.log("[TabDiscovery] HTML parsing found no dealer tabs. Probing GIDs...");
-    const baseUrl=SHEET_CSV_URL.replace("pub?output=csv","pub?");
-    const found=[];
-    for(let i=1;i<=25;i++){
-      try{
-        const r=await fetch(baseUrl+"gid="+i+"&single=true&output=csv");
-        if(r.ok){const t=await r.text();
-          if(t.length>20&&!t.includes("<!DOCTYPE")&&!t.includes("<html")){
-            const preview=Papa.parse(t,{header:true,skipEmptyLines:true,preview:2});
-            if(preview.data&&preview.data.length>0){
-              const hdrs=Object.keys(preview.data[0]).map(h=>h.toLowerCase());
-              const isOverall=hdrs.some(h=>h.includes("month"))&&hdrs.some(h=>h.includes("year"))&&hdrs.some(h=>h.includes("location"));
-              if(!isOverall){found.push({gid:String(i),name:"Dealership Tab "+i});console.log("[TabDiscovery] Found sheet at gid="+i);}
-            }
-          }
-        }
-      }catch(e){}
-    }
-    if(found.length>0){console.log("[TabDiscovery] SUCCESS via probe:",found.length,"tabs");setSheetTabs(found);return;}
-    console.log("[TabDiscovery] No tabs found. User may need to check publish settings or provide GIDs.");
-    setSheetTabs([{gid:"_NONE_",name:"_DISCOVERY_FAILED_"}]);
+      const resp=await fetch(SHEETS_API+"?action=list");
+      if(!resp.ok){const e=await resp.json().catch(()=>({}));console.warn("[TabDiscovery] API error:",e.error||resp.status);
+        setSheetTabs([{gid:"_NONE_",name:"_API_ERROR_"}]);return;}
+      const{sheets}=await resp.json();
+      // Filter out the "Overall Results" tab — keep only dealership tabs
+      const dealerTabs=(sheets||[]).filter(s=>{const lc=s.title.toLowerCase();return!lc.includes("overall")&&!lc.includes("sheet1")&&!lc.includes("template")&&s.title.length>1;})
+        .map(s=>({sheetId:s.sheetId,name:s.title}));
+      console.log("[TabDiscovery] Found",dealerTabs.length,"dealership tabs:",dealerTabs.map(t=>t.name));
+      if(dealerTabs.length>0)setSheetTabs(dealerTabs);
+      else setSheetTabs([{sheetId:"_NONE_",name:"_DISCOVERY_FAILED_"}]);
+    }catch(e){console.warn("[TabDiscovery] Failed:",e);setSheetTabs([{sheetId:"_NONE_",name:"_API_ERROR_"}]);}
   },[]);
 
   useEffect(()=>{fetchData(false);discoverTabs();},[fetchData,discoverTabs]);
