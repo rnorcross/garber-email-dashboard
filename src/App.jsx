@@ -10,6 +10,7 @@ const SHEETS_API = "/api/sheets";
 const MN=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_MAP={January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12,Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
 const C={main:"#072a60",sec:"#0d6eff",acc1:"#1e88e5",green:"#0a8754",amber:"#c9710d",red:"#c0392b",bg:"#edf1f7",purple:"#7c3aed",teal:"#0d9488"};
+const LOC_NORMALIZE={"Volvo Cars Rochester":"Volvo Cars of Rochester"};
 const TABS=[
   {id:"groupSales",label:"Sales Email Marketing",icon:"\ud83d\udcca"},
   {id:"groupService",label:"Service Email Marketing",icon:"\ud83d\udd27"},
@@ -42,7 +43,8 @@ function parseOverallCSV(text){
   return result.data.map(r=>{
     const monthRaw=(r[colMonth]||"").trim();const m=MONTH_MAP[monthRaw]||parseInt(monthRaw)||0;const y=parseInt(r[colYear])||0;
     if(!m||!y)return null;
-    return{month:m,year:y,location:(r[colLoc]||"").trim(),monthlyCost:num(r[colCost]),
+    const rawLoc=(r[colLoc]||"").trim();
+    return{month:m,year:y,location:LOC_NORMALIZE[rawLoc]||rawLoc,monthlyCost:num(r[colCost]),
       salesEngaged:num(r[colSalesEngaged]),salesShoppers:num(r[colSalesShoppers]),salesLeads:num(r[colSalesLeads]),
       salesInfluenced:num(r[colSalesInfluenced]),salesWinback:num(r[colSalesWinback]),salesGross:num(r[colSalesGross]),
       salesWinbackProfit:num(r[colSalesWinbackProfit]),salesROI:num(r[colSalesROI]),winbackSalesPct:num(r[colWinbackSalesPct]),
