@@ -128,7 +128,7 @@ function GroupSalesTab({data,periods,sp,setSp,locations}){
   const cur=p?aggSales(filterPeriod(filt,p)):null;const prv=prev?aggSales(filterPeriod(filt,prev)):null;
   const last12=getLast12(periods,sp);
 
-  // Fetch new customer counts for current and previous period
+  // Fetch new customer counts + condition data for current and previous period
   useEffect(()=>{
     if(!p)return;
     fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year)
@@ -150,6 +150,20 @@ function GroupSalesTab({data,periods,sp,setSp,locations}){
     return prevNewCustData.total||0;
   },[prevNewCustData,loc]);
 
+  // New vs Used condition percentages
+  const{newPct,usedPct}=useMemo(()=>{
+    if(!newCustData||!newCustData.condCounts)return{newPct:0,usedPct:0};
+    let n=0,u=0;
+    if(loc){
+      const cc=newCustData.condCounts[loc];
+      if(cc){n=cc.new||0;u=cc.used||0;}
+    }else{
+      n=newCustData.condTotal?.new||0;u=newCustData.condTotal?.used||0;
+    }
+    const tot=n+u;
+    return{newPct:tot>0?(n/tot*100):0,usedPct:tot>0?(u/tot*100):0};
+  },[newCustData,loc]);
+
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
     <FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setLoc}/>
@@ -167,6 +181,8 @@ function GroupSalesTab({data,periods,sp,setSp,locations}){
       <KPI label="Monthly Cost" value={cur.monthlyCost} fmt="money" color={C.amber}/>
       <KPI label="Sales ROI %" value={cur.salesROI} fmt="pct" color={cur.salesROI>=100?C.green:C.red}/>
       <KPI label="Winback Sales %" value={cur.winbackSalesPct} fmt="pct" color={C.teal}/>
+      <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
+      <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
       <TrendChart data={filt} periods={last12} valueKey="salesShoppers" label="Sales Shoppers" color={C.acc1} aggFn={aggSales} filterLoc={loc}/>
@@ -451,10 +467,24 @@ function CustomerDataTab({sheetTabs,locations}){
   const[selectedTab,setSelectedTab]=useState("");
   const[custData,setCustData]=useState(null);const[custHeaders,setCustHeaders]=useState([]);
   const[loading,setLoading]=useState(false);const[error,setError]=useState("");
-  const{sortState,onSort,doSort}=useSort("col0","asc");
+  const{sortState,onSort,doSort}=useSort("col0","desc");
 
   const apiFailed=sheetTabs.length===1&&(sheetTabs[0].name==="_API_ERROR_"||sheetTabs[0].name==="_DISCOVERY_FAILED_");
   const validTabs=apiFailed?[]:sheetTabs;
+
+  // Columns to hide (case-insensitive partial match)
+  const HIDDEN_COLS=["front end gross","back end gross","frontend gross","backend gross","front-end gross","back-end gross"];
+  // Columns to format as dollars (case-insensitive partial match)
+  const DOLLAR_COLS=["total gross","winback profit","gross profit","profit"];
+
+  const isHidden=(h)=>{const lc=h.toLowerCase();return HIDDEN_COLS.some(hc=>lc.includes(hc));};
+  const isDollar=(h)=>{const lc=h.toLowerCase();return DOLLAR_COLS.some(dc=>lc.includes(dc));};
+  const fmtCell=(val,h)=>{
+    if(!isDollar(h))return val;
+    const n=parseFloat(String(val).replace(/[$,\s]/g,""));
+    if(isNaN(n))return val;
+    return"$"+n.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
+  };
 
   const loadSheet=useCallback(async(sheetName)=>{
     if(!sheetName)return;setLoading(true);setError("");setCustData(null);
@@ -463,9 +493,32 @@ function CustomerDataTab({sheetTabs,locations}){
       if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||"HTTP "+resp.status);}
       const{headers,data:records}=await resp.json();
       if(records&&records.length>0){
-        const hdrs=(headers||[]).filter(h=>h.trim()!=="");
-        setCustHeaders(hdrs);
-        setCustData(records.map((row,idx)=>{const obj={_idx:idx};hdrs.forEach((h,ci)=>{obj["col"+ci]=row[h]||"";});return obj;}));
+        // Filter out hidden columns
+        const visibleHdrs=(headers||[]).filter(h=>h.trim()!==""&&!isHidden(h));
+        setCustHeaders(visibleHdrs);
+        // Find year and month column indices for sorting (use original headers for mapping)
+        const allHdrs=(headers||[]).filter(h=>h.trim()!=="");
+        const yearCol=allHdrs.findIndex(h=>{const lc=h.toLowerCase();return lc==="year";});
+        const monthCol=allHdrs.findIndex(h=>{const lc=h.toLowerCase();return lc==="month";});
+        const dateCol=allHdrs.findIndex(h=>{const lc=h.toLowerCase();return lc.includes("date");});
+        // Map visible headers to their column index
+        const visCols=visibleHdrs.map((h,ci)=>({origHeader:h,colKey:"col"+ci}));
+        const mapped=records.map((row,idx)=>{
+          const obj={_idx:idx,_sortYear:0,_sortMonth:0};
+          visibleHdrs.forEach((h,ci)=>{obj["col"+ci]=row[h]||"";});
+          // Extract year/month for default sort
+          const MMAP={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+          if(yearCol>=0)obj._sortYear=parseInt(row[allHdrs[yearCol]])||0;
+          if(monthCol>=0){const mv=(row[allHdrs[monthCol]]||"").trim().toLowerCase();obj._sortMonth=MMAP[mv]||parseInt(mv)||0;}
+          if(dateCol>=0&&!obj._sortYear){
+            const ds=row[allHdrs[dateCol]]||"";const pd=new Date(ds);
+            if(!isNaN(pd.getTime())){obj._sortYear=pd.getFullYear();obj._sortMonth=pd.getMonth()+1;}
+          }
+          return obj;
+        });
+        // Sort by year desc, then month desc by default
+        mapped.sort((a,b)=>b._sortYear-a._sortYear||b._sortMonth-a._sortMonth);
+        setCustData(mapped);
       }else{setError("No data found in this sheet.");}
     }catch(e){setError(e.message);}
     setLoading(false);
@@ -478,7 +531,6 @@ function CustomerDataTab({sheetTabs,locations}){
   const sorted=custData?doSort(custData):[];
 
   return(<div>
-    {/* Normal mode: tabs were discovered via API */}
     {validTabs.length>0&&(<div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>DEALERSHIP:</span>
       <select value={selectedTab} onChange={e=>setSelectedTab(e.target.value)} style={{...selStyle,maxWidth:400}}>
@@ -488,7 +540,6 @@ function CustomerDataTab({sheetTabs,locations}){
       <span style={{fontSize:13,color:"#7a8a9a"}}>Customer-specific data from email marketing for <strong>Sales</strong></span>
     </div>)}
 
-    {/* API error: show setup instructions */}
     {apiFailed&&!loading&&!custData&&(<div style={{background:"white",borderRadius:14,padding:32,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",maxWidth:700,margin:"20px auto",textAlign:"left"}}>
       <div style={{fontSize:20,fontWeight:800,color:C.main,marginBottom:16}}>{"\u26A0\uFE0F"} API Setup Required</div>
       <p style={{fontSize:14,color:"#555",lineHeight:1.7,marginBottom:16}}>The Customer Data tab needs two environment variables set in your Vercel project settings. Check the deployment guide for step-by-step instructions:</p>
@@ -502,13 +553,11 @@ function CustomerDataTab({sheetTabs,locations}){
       </div>
     </div>)}
 
-    {/* Still loading tab list */}
     {sheetTabs.length===0&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:"#aab"}}>
       <div style={{width:40,height:40,border:"4px solid "+C.sec,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite",margin:"0 auto 16px"}}/>
       <div style={{fontSize:14,color:"#888"}}>Loading dealership list...</div>
     </div>)}
 
-    {/* Idle state: tabs loaded but nothing selected */}
     {validTabs.length>0&&!selectedTab&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:"#aab"}}>
       <div style={{fontSize:48,marginBottom:12}}>{"\ud83d\udcca"}</div>
       <div style={{fontSize:16,fontWeight:600}}>Select a dealership above to view customer-specific data</div>
@@ -527,7 +576,7 @@ function CustomerDataTab({sheetTabs,locations}){
       <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
         <thead><tr>{custHeaders.map((h,ci)=>(<SortHeader key={ci} label={h} sortKey={"col"+ci} sortState={sortState} onSort={onSort} align={ci===0?"left":"right"} first={ci===0} last={ci===custHeaders.length-1}/>))}</tr></thead>
         <tbody>{sorted.map((row,i)=>(<tr key={row._idx} onMouseEnter={e=>e.currentTarget.style.background="#e4edff"} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#f4f7fc":"white"}>
-          {custHeaders.map((h,ci)=>(<td key={ci} style={{padding:"9px 12px",fontSize:13,textAlign:ci===0?"left":"right",background:i%2===0?"#f4f7fc":"white",whiteSpace:"nowrap",maxWidth:300,overflow:"hidden",textOverflow:"ellipsis",fontWeight:ci===0?600:400,color:ci===0?C.main:undefined}}>{row["col"+ci]}</td>))}
+          {custHeaders.map((h,ci)=>(<td key={ci} style={{padding:"9px 12px",fontSize:13,textAlign:ci===0?"left":"right",background:i%2===0?"#f4f7fc":"white",whiteSpace:"nowrap",maxWidth:300,overflow:"hidden",textOverflow:"ellipsis",fontWeight:ci===0?600:isDollar(h)?600:400,color:ci===0?C.main:isDollar(h)?C.green:undefined}}>{fmtCell(row["col"+ci],h)}</td>))}
         </tr>))}</tbody>
       </table>
       <div style={{padding:"12px 0",fontSize:13,color:"#7a8a9a",textAlign:"right"}}>{sorted.length} customer records</div>
