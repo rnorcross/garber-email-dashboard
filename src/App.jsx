@@ -195,12 +195,22 @@ function GroupAdsTab({data,periods,sp,setSp,locations}){
   const gCur=p?aggGoogle(filterPeriod(filt,p)):null;const gPrv=prev?aggGoogle(filterPeriod(filt,prev)):null;
   const fCur=p?aggFB(filterPeriod(filt,p)):null;const fPrv=prev?aggFB(filterPeriod(filt,prev)):null;
   const last12=getLast12(periods,sp);
+  // Compute which dealerships have ANY ad data across all periods
+  const locsWithAdData=useMemo(()=>{const s=new Set();data.forEach(r=>{if(r.clicksGoogle>0||r.leadsGoogle>0||r.spendGoogle>0||r.pageViewsGoogle>0||r.phoneCallsGoogle>0||r.clicksFB>0||r.leadsFB>0||r.spendFB>0||r.pageViewsFB>0||r.phoneCallsFB>0)s.add(r.location);});return s;},[data]);
   if(!gCur||!fCur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   const hasG=gCur.clicksGoogle>0||gCur.leadsGoogle>0||gCur.spendGoogle>0||gCur.pageViewsGoogle>0||gCur.phoneCallsGoogle>0;
   const hasF=fCur.clicksFB>0||fCur.leadsFB>0||fCur.spendFB>0||fCur.pageViewsFB>0||fCur.phoneCallsFB>0;
   return(<div>
-    <FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setLoc}/>
-    {hasG&&<Section title="Google Ads \u2014 Service" desc="Performance metrics for Google search ads promoting service.">
+    <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
+      <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
+      <select value={sp} onChange={e=>setSp(e.target.value)} style={selStyle}>{periods.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select>
+      <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>DEALERSHIP:</span>
+      <select value={loc} onChange={e=>setLoc(e.target.value)} style={{...selStyle,maxWidth:340}}>
+        <option value="">All Dealerships</option>
+        {locations.map(l=><option key={l} value={l} disabled={!locsWithAdData.has(l)} style={{color:locsWithAdData.has(l)?C.main:"#ccc"}}>{l}{locsWithAdData.has(l)?"":" (no data)"}</option>)}
+      </select>
+    </div>
+    {hasG&&<Section title="Google Ads" desc="Performance metrics for Google search ads promoting service.">
       <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
         <KPI label="Clicks" value={gCur.clicksGoogle} color={C.main} sub={gPrv?<Badge cur={gCur.clicksGoogle} prev={gPrv.clicksGoogle}/>:null}/>
         <KPI label="Page Views" value={gCur.pageViewsGoogle} color={C.acc1} sub={gPrv?<Badge cur={gCur.pageViewsGoogle} prev={gPrv.pageViewsGoogle}/>:null}/>
@@ -209,7 +219,7 @@ function GroupAdsTab({data,periods,sp,setSp,locations}){
         <KPI label="Spend" value={gCur.spendGoogle} fmt="money" color={C.amber}/>
       </div>
     </Section>}
-    {hasF&&<Section title="Facebook Ads \u2014 Sales" desc="Performance metrics for Facebook ads promoting sales.">
+    {hasF&&<Section title="Facebook Ads" desc="Performance metrics for Facebook ads promoting sales.">
       <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
         <KPI label="Clicks" value={fCur.clicksFB} color={C.main} sub={fPrv?<Badge cur={fCur.clicksFB} prev={fPrv.clicksFB}/>:null}/>
         <KPI label="Page Views" value={fCur.pageViewsFB} color={C.acc1} sub={fPrv?<Badge cur={fCur.pageViewsFB} prev={fPrv.pageViewsFB}/>:null}/>
@@ -251,6 +261,9 @@ function DealerSalesTab({data,periods,sp,setSp,locations}){
   rows.forEach(r=>{for(const k in tot)tot[k]+=r[k];});
   const totPrevInf=rows.every(r=>r.prevInfluenced===null)?null:rows.reduce((a,r)=>a+(r.prevInfluenced??0),0);
   const totPrevWb=rows.every(r=>r.prevWinback===null)?null:rows.reduce((a,r)=>a+(r.prevWinback??0),0);
+  const activeRows=rows.filter(r=>r.salesInfluenced>0||r.salesEngaged>0);
+  const avgROI=activeRows.length>0?(activeRows.reduce((a,r)=>a+r.salesROI,0)/activeRows.length):0;
+  const avgWbPct=activeRows.length>0?(activeRows.reduce((a,r)=>a+r.winbackSalesPct,0)/activeRows.length):0;
   const td=i=>({padding:"10px 12px",fontSize:13,background:i%2===0?"#f4f7fc":"white"});
   const ts={padding:"11px 12px",fontSize:13,fontWeight:800,background:"#e8edf5",borderTop:`2px solid ${C.main}`};
   return(<div>
@@ -300,8 +313,8 @@ function DealerSalesTab({data,periods,sp,setSp,locations}){
             <td style={{...ts,textAlign:"right",color:C.purple}}>{fmtNum(tot.salesWinback)}</td>
             <td style={{...ts,textAlign:"right"}}><Badge cur={tot.salesWinback} prev={totPrevWb}/></td>
             <td style={{...ts,textAlign:"right"}}>{fmtMoney(tot.salesGross)}</td>
-            <td style={{...ts,textAlign:"right"}}>{"\u2014"}</td>
-            <td style={{...ts,textAlign:"right",borderRadius:"0 0 10px 0"}}>{"\u2014"}</td>
+            <td style={{...ts,textAlign:"right"}}><span style={{background:avgROI>=200?"#d4edda":avgROI>=100?"#fff3cd":"#f8d7da",color:avgROI>=200?"#155724":avgROI>=100?"#856404":"#721c24",padding:"3px 10px",borderRadius:20,fontWeight:800,fontSize:13}}>{fmtPct(avgROI)}</span></td>
+            <td style={{...ts,textAlign:"right",borderRadius:"0 0 10px 0"}}>{fmtPct(avgWbPct)}</td>
           </tr>
         </tbody>
       </table>
@@ -448,13 +461,53 @@ export default function App(){
   },[]);
 
   const discoverTabs=useCallback(async()=>{
-    try{const resp=await fetch(SHEET_HTML_URL);const html=await resp.text();const tabs=[];
-      const re1=/id="sheet-button-(\d+)"[^>]*>([^<]+)/g;let match;
-      while((match=re1.exec(html))!==null){tabs.push({gid:match[1],name:match[2].trim()});}
+    try{
+      const resp=await fetch(SHEET_HTML_URL);const html=await resp.text();
+      const tabs=[];let match;
+      // Strategy 1: id="sheet-button-GID" with name in anchor or text
+      const re1=/id="sheet-button-(\d+)"[^>]*>([^<]+)/g;
+      while((match=re1.exec(html))!==null){tabs.push({gid:match[1],name:match[2].replace(/<[^>]*>/g,"").trim()});}
+      // Strategy 2: switchToSheet('GID')...>name<
       if(tabs.length===0){const re2=/switchToSheet\s*\(\s*'?(\d+)'?\s*\)[^>]*>([^<]+)/g;
         while((match=re2.exec(html))!==null){tabs.push({gid:match[1],name:match[2].trim()});}}
-      const dealerTabs=tabs.filter(t=>{const lc=t.name.toLowerCase();return!lc.includes("overall")&&!lc.includes("sheet1")&&t.name.length>1;});
-      setSheetTabs(dealerTabs);
+      // Strategy 3: Look for gid= in any links paired with visible text
+      if(tabs.length===0){const re3=/#gid=(\d+)[^>]*>([^<]{2,})/g;
+        while((match=re3.exec(html))!==null){tabs.push({gid:match[1],name:match[2].trim()});}}
+      // Strategy 4: Look for data-gid attributes
+      if(tabs.length===0){const re4=/data-gid="(\d+)"[^>]*>([^<]+)/g;
+        while((match=re4.exec(html))!==null){tabs.push({gid:match[1],name:match[2].trim()});}}
+      // Strategy 5: Extract ALL unique gid values from the page and pair with sheet names from sheet-menu
+      if(tabs.length===0){
+        const allGids=[...new Set((html.match(/["'](\d{5,})["']/g)||[]).map(m=>m.replace(/["']/g,"")))];
+        const allNames=[...new Set((html.match(/<(?:li|a|span)[^>]*>([^<]{3,60})<\//g)||[]).map(m=>m.replace(/<[^>]*>/g,"").trim()).filter(n=>n&&!n.includes("{")&&!n.includes("function")))];
+        if(allGids.length>0&&allNames.length>0){
+          // First name is likely "Overall Results", subsequent names are dealership tabs
+          allNames.forEach((name,i)=>{if(i<allGids.length)tabs.push({gid:allGids[i],name});});
+        }
+      }
+      console.log("Discovered sheet tabs:",tabs);
+      const dealerTabs=tabs.filter(t=>{const lc=t.name.toLowerCase();return!lc.includes("overall")&&!lc.includes("sheet1")&&!lc.includes("template")&&t.name.length>1;});
+      if(dealerTabs.length>0){setSheetTabs(dealerTabs);return;}
+      // Final fallback: Probe for sheets by trying gid=0,1,2... and common large GIDs
+      // This uses a HEAD request approach to test if a gid returns data
+      console.log("Tab discovery via HTML parsing found no tabs. Trying probe approach...");
+      const baseUrl=SHEET_CSV_URL.replace("pub?output=csv","pub?");
+      const probeGids=["0"];
+      for(let i=1;i<=30;i++)probeGids.push(String(i));
+      const found=[];
+      for(const gid of probeGids){
+        try{
+          const r=await fetch(baseUrl+`gid=${gid}&single=true&output=csv`);
+          if(r.ok){const t=await r.text();if(t.length>10){
+            const first=Papa.parse(t,{header:true,skipEmptyLines:true,preview:1});
+            if(first.data&&first.data.length>0){
+              const hdrs=Object.keys(first.data[0]);
+              const isOverall=hdrs.some(h=>h.toLowerCase().includes("month")&&h.toLowerCase().includes("year"));
+              if(!isOverall)found.push({gid,name:`Sheet ${gid}`});
+          }}}
+        }catch(e){}
+      }
+      if(found.length>0)setSheetTabs(found);
     }catch(e){console.warn("Could not discover sheet tabs:",e);}
   },[]);
 
