@@ -170,7 +170,7 @@ function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc})
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
     {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
-    {captureMode&&<div style={{padding:"12px 0 8px",fontSize:15,fontWeight:700,color:C.main}}>{loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
+    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Sales Email Marketing {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
     <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
       <KPI label="Sales Engaged" value={cur.salesEngaged} color={C.main} sub={prv?<Badge cur={cur.salesEngaged} prev={prv.salesEngaged}/>:null}/>
       <KPI label="Sales Shoppers" value={cur.salesShoppers} color={C.acc1} sub={prv?<Badge cur={cur.salesShoppers} prev={prv.salesShoppers}/>:null}/>
@@ -213,7 +213,7 @@ function GroupServiceTab({data,periods,sp,setSp,locations,captureMode,captureLoc
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
     {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
-    {captureMode&&<div style={{padding:"12px 0 8px",fontSize:15,fontWeight:700,color:C.main}}>{loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
+    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Service Email Marketing {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
     <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
       <KPI label="Service Shoppers" value={cur.serviceShoppers} color={C.main} sub={prv?<Badge cur={cur.serviceShoppers} prev={prv.serviceShoppers}/>:null}/>
       <KPI label="Service Leads" value={cur.serviceLeads} color={C.sec} sub={prv?<Badge cur={cur.serviceLeads} prev={prv.serviceLeads}/>:null}/>
@@ -259,7 +259,7 @@ function GroupAdsTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
         {locations.map(l=><option key={l} value={l} disabled={!locsWithAdData.has(l)} style={{color:locsWithAdData.has(l)?C.main:"#ccc"}}>{l}{locsWithAdData.has(l)?"":" (no data)"}</option>)}
       </select>
     </div>}
-    {captureMode&&<div style={{padding:"12px 0 8px",fontSize:15,fontWeight:700,color:C.main}}>{loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
+    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>{[hasG&&"Google Ads",hasF&&"Facebook Ads"].filter(Boolean).join(" & ")} {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
     {hasG&&<Section title="Google Ads" desc="Performance metrics for Google search ads promoting service.">
       <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
         <KPI label="Clicks" value={gCur.clicksGoogle} color={C.main} sub={gPrv?<Badge cur={gCur.clicksGoogle} prev={gPrv.clicksGoogle}/>:null}/>
@@ -592,7 +592,7 @@ function CustomerDataTab({sheetTabs,locations}){
   </div>);
 }
 
-async function captureTab(ref,opts={}){return html2canvas(ref,{backgroundColor:"#edf1f7",scale:opts.scale||2,useCORS:true,logging:false,width:opts.width||undefined});}
+async function captureTab(ref,opts={}){return html2canvas(ref,{backgroundColor:opts.bg||"#edf1f7",scale:opts.scale||2,useCORS:true,logging:false,width:opts.width||undefined});}
 
 export default function App(){
   const[data,setData]=useState([]);const[loading,setLoading]=useState(true);const[error,setError]=useState("");
@@ -659,7 +659,7 @@ export default function App(){
           setCaptureLoc(loc);
           await new Promise(r=>setTimeout(r,500));
           if(contentRef.current){
-            const canvas=await captureTab(contentRef.current,{scale:1});
+            const canvas=await captureTab(contentRef.current,{scale:1,bg:"#ffffff"});
             const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.92));
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
             zip.file(`${tab.label}_${safeLoc}_${sp}.jpg`,blob);
@@ -715,7 +715,7 @@ export default function App(){
       </div>
     </div>
 
-    <div ref={contentRef} style={{padding:"24px 36px 48px",maxWidth:captureMode?1920:undefined}}>
+    <div ref={contentRef} style={{padding:captureMode?"24px 28px 20px":"24px 36px 48px",maxWidth:captureMode?1920:undefined,background:captureMode?"white":"transparent",borderRadius:captureMode?14:0}}>
       {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
