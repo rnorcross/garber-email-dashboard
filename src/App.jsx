@@ -121,10 +121,35 @@ const FilterBar=({periods,sp,setSp,locations,selectedLoc,setSelectedLoc})=>(
 
 function GroupSalesTab({data,periods,sp,setSp,locations}){
   const[loc,setLoc]=useState("");
+  const[newCustData,setNewCustData]=useState(null);
+  const[prevNewCustData,setPrevNewCustData]=useState(null);
   const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
   const filt=loc?data.filter(r=>r.location===loc):data;
   const cur=p?aggSales(filterPeriod(filt,p)):null;const prv=prev?aggSales(filterPeriod(filt,prev)):null;
   const last12=getLast12(periods,sp);
+
+  // Fetch new customer counts for current and previous period
+  useEffect(()=>{
+    if(!p)return;
+    fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year)
+      .then(r=>r.json()).then(d=>setNewCustData(d)).catch(()=>setNewCustData(null));
+    if(prev){
+      fetch(SHEETS_API+"?action=newcustomer&month="+prev.month+"&year="+prev.year)
+        .then(r=>r.json()).then(d=>setPrevNewCustData(d)).catch(()=>setPrevNewCustData(null));
+    }else{setPrevNewCustData(null);}
+  },[p,prev]);
+
+  const newCustCount=useMemo(()=>{
+    if(!newCustData||!newCustData.counts)return 0;
+    if(loc)return newCustData.counts[loc]||0;
+    return newCustData.total||0;
+  },[newCustData,loc]);
+  const prevNewCustCount=useMemo(()=>{
+    if(!prevNewCustData||!prevNewCustData.counts)return null;
+    if(loc)return prevNewCustData.counts[loc]||0;
+    return prevNewCustData.total||0;
+  },[prevNewCustData,loc]);
+
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
     <FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setLoc}/>
@@ -134,6 +159,7 @@ function GroupSalesTab({data,periods,sp,setSp,locations}){
       <KPI label="Sales Leads" value={cur.salesLeads} color={C.sec} sub={prv?<Badge cur={cur.salesLeads} prev={prv.salesLeads}/>:null}/>
       <KPI label="Sales Influenced" value={cur.salesInfluenced} color={C.green} sub={prv?<Badge cur={cur.salesInfluenced} prev={prv.salesInfluenced}/>:null}/>
       <KPI label="Sales Winback" value={cur.salesWinback} color={C.purple} sub={prv?<Badge cur={cur.salesWinback} prev={prv.salesWinback}/>:null}/>
+      <KPI label="New Customer Sales" value={newCustCount} color={C.teal} sub={prevNewCustCount!==null?<Badge cur={newCustCount} prev={prevNewCustCount}/>:null}/>
     </div>
     <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
       <KPI label="Sales Gross" value={cur.salesGross} fmt="money" color={C.green} sub={prv?<MoneyBadge cur={cur.salesGross} prev={prv.salesGross}/>:null}/>
@@ -250,17 +276,41 @@ function GroupAdsTab({data,periods,sp,setSp,locations}){
 
 function DealerSalesTab({data,periods,sp,setSp,locations}){
   const{sortState,onSort,doSort}=useSort("salesInfluenced","desc");
+  const[newCustData,setNewCustData]=useState(null);
+  const[prevNewCustData,setPrevNewCustData]=useState(null);
   const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
+
+  // Fetch new customer counts
+  useEffect(()=>{
+    if(!p)return;
+    fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year)
+      .then(r=>r.json()).then(d=>setNewCustData(d)).catch(()=>setNewCustData(null));
+    if(prev){
+      fetch(SHEETS_API+"?action=newcustomer&month="+prev.month+"&year="+prev.year)
+        .then(r=>r.json()).then(d=>setPrevNewCustData(d)).catch(()=>setPrevNewCustData(null));
+    }else{setPrevNewCustData(null);}
+  },[p,prev]);
+
+  const ncCounts=newCustData?.counts||{};
+  const pncCounts=prevNewCustData?.counts||{};
+
   const rows=locations.map(loc=>{
     const cur=p?aggSales(filterPeriod(data,p).filter(r=>r.location===loc)):{salesEngaged:0,salesShoppers:0,salesLeads:0,salesInfluenced:0,salesWinback:0,salesGross:0,salesWinbackProfit:0,salesROI:0,winbackSalesPct:0,monthlyCost:0};
     const prv=prev?aggSales(filterPeriod(data,prev).filter(r=>r.location===loc)):null;
-    return{location:loc,...cur,prevInfluenced:prv?.salesInfluenced??null,prevWinback:prv?.salesWinback??null};
+    // Match dealership name to sheet tab name (sheet tabs may not exactly match location names)
+    // Try exact match first, then partial
+    let nc=ncCounts[loc]??null;
+    if(nc===null){const lcLoc=loc.toLowerCase();const match=Object.keys(ncCounts).find(k=>k.toLowerCase()===lcLoc||lcLoc.includes(k.toLowerCase())||k.toLowerCase().includes(lcLoc));if(match)nc=ncCounts[match];}
+    let pnc=Object.keys(pncCounts).length>0?(pncCounts[loc]??null):null;
+    if(pnc===null&&Object.keys(pncCounts).length>0){const lcLoc=loc.toLowerCase();const match=Object.keys(pncCounts).find(k=>k.toLowerCase()===lcLoc||lcLoc.includes(k.toLowerCase())||k.toLowerCase().includes(lcLoc));if(match)pnc=pncCounts[match];}
+    return{location:loc,...cur,prevInfluenced:prv?.salesInfluenced??null,prevWinback:prv?.salesWinback??null,newCust:nc??0,prevNewCust:pnc};
   });
   const sorted=doSort(rows);
-  const tot={salesEngaged:0,salesShoppers:0,salesLeads:0,salesInfluenced:0,salesWinback:0,salesGross:0};
+  const tot={salesEngaged:0,salesShoppers:0,salesLeads:0,salesInfluenced:0,salesWinback:0,salesGross:0,newCust:0};
   rows.forEach(r=>{for(const k in tot)tot[k]+=r[k];});
   const totPrevInf=rows.every(r=>r.prevInfluenced===null)?null:rows.reduce((a,r)=>a+(r.prevInfluenced??0),0);
   const totPrevWb=rows.every(r=>r.prevWinback===null)?null:rows.reduce((a,r)=>a+(r.prevWinback??0),0);
+  const totPrevNC=rows.every(r=>r.prevNewCust===null)?null:rows.reduce((a,r)=>a+(r.prevNewCust??0),0);
   const activeRows=rows.filter(r=>r.salesInfluenced>0||r.salesEngaged>0);
   const avgROI=activeRows.length>0?(activeRows.reduce((a,r)=>a+r.salesROI,0)/activeRows.length):0;
   const avgWbPct=activeRows.length>0?(activeRows.reduce((a,r)=>a+r.winbackSalesPct,0)/activeRows.length):0;
@@ -283,6 +333,8 @@ function DealerSalesTab({data,periods,sp,setSp,locations}){
           <SortHeader label="vs PM" sortKey="prevInfluenced" sortState={sortState} onSort={onSort}/>
           <SortHeader label="Winback" sortKey="salesWinback" sortState={sortState} onSort={onSort}/>
           <SortHeader label="WB vs PM" sortKey="prevWinback" sortState={sortState} onSort={onSort}/>
+          <SortHeader label="New Cust." sortKey="newCust" sortState={sortState} onSort={onSort}/>
+          <SortHeader label="NC vs PM" sortKey="prevNewCust" sortState={sortState} onSort={onSort}/>
           <SortHeader label="Gross" sortKey="salesGross" sortState={sortState} onSort={onSort}/>
           <SortHeader label="ROI %" sortKey="salesROI" sortState={sortState} onSort={onSort}/>
           <SortHeader label="WB %" sortKey="winbackSalesPct" sortState={sortState} onSort={onSort} last/>
@@ -298,6 +350,8 @@ function DealerSalesTab({data,periods,sp,setSp,locations}){
             <td style={{...td(i),textAlign:"right"}}><Badge cur={r.salesInfluenced} prev={r.prevInfluenced}/></td>
             <td style={{...td(i),textAlign:"right",color:C.purple,fontWeight:600}}>{fmtNum(r.salesWinback)}</td>
             <td style={{...td(i),textAlign:"right"}}><Badge cur={r.salesWinback} prev={r.prevWinback}/></td>
+            <td style={{...td(i),textAlign:"right",color:C.teal,fontWeight:700}}>{fmtNum(r.newCust)}</td>
+            <td style={{...td(i),textAlign:"right"}}><Badge cur={r.newCust} prev={r.prevNewCust}/></td>
             <td style={{...td(i),textAlign:"right",fontWeight:600}}>{fmtMoney(r.salesGross)}</td>
             <td style={{...td(i),textAlign:"right"}}><span style={{background:r.salesROI>=200?"#d4edda":r.salesROI>=100?"#fff3cd":"#f8d7da",color:r.salesROI>=200?"#155724":r.salesROI>=100?"#856404":"#721c24",padding:"3px 10px",borderRadius:20,fontWeight:700,fontSize:12}}>{fmtPct(r.salesROI)}</span></td>
             <td style={{...td(i),textAlign:"right"}}>{fmtPct(r.winbackSalesPct)}</td>
@@ -312,6 +366,8 @@ function DealerSalesTab({data,periods,sp,setSp,locations}){
             <td style={{...ts,textAlign:"right"}}><Badge cur={tot.salesInfluenced} prev={totPrevInf}/></td>
             <td style={{...ts,textAlign:"right",color:C.purple}}>{fmtNum(tot.salesWinback)}</td>
             <td style={{...ts,textAlign:"right"}}><Badge cur={tot.salesWinback} prev={totPrevWb}/></td>
+            <td style={{...ts,textAlign:"right",color:C.teal}}>{fmtNum(tot.newCust)}</td>
+            <td style={{...ts,textAlign:"right"}}><Badge cur={tot.newCust} prev={totPrevNC}/></td>
             <td style={{...ts,textAlign:"right"}}>{fmtMoney(tot.salesGross)}</td>
             <td style={{...ts,textAlign:"right"}}><span style={{background:avgROI>=200?"#d4edda":avgROI>=100?"#fff3cd":"#f8d7da",color:avgROI>=200?"#155724":avgROI>=100?"#856404":"#721c24",padding:"3px 10px",borderRadius:20,fontWeight:800,fontSize:13}}>{fmtPct(avgROI)}</span></td>
             <td style={{...ts,textAlign:"right",borderRadius:"0 0 10px 0"}}>{fmtPct(avgWbPct)}</td>
