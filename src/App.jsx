@@ -71,8 +71,8 @@ function aggService(rows){const o={serviceShoppers:0,serviceLeads:0,serviceROs:0
 function aggGoogle(rows){const o={clicksGoogle:0,pageViewsGoogle:0,leadsGoogle:0,phoneCallsGoogle:0,spendGoogle:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});return o;}
 function aggFB(rows){const o={clicksFB:0,pageViewsFB:0,leadsFB:0,phoneCallsFB:0,spendFB:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});return o;}
 
-const Badge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"}</span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{typeof cur==="number"&&cur%1!==0?d.toFixed(1):d.toLocaleString()}</span>;};
-const MoneyBadge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"}</span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{fmtMoney(d)}</span>;};
+const Badge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} vs PM</span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{typeof cur==="number"&&cur%1!==0?d.toFixed(1):d.toLocaleString()} <span style={{fontWeight:600,fontSize:12}}>vs PM</span></span>;};
+const MoneyBadge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} vs PM</span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{fmtMoney(d)} <span style={{fontWeight:600,fontSize:12}}>vs PM</span></span>;};
 
 const KPI=({label,value,fmt="num",color=C.main,sub})=>(
   <div style={{background:"white",borderRadius:14,padding:"22px 24px",minWidth:150,flex:1,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderTop:`4px solid ${color}`}}>
@@ -171,19 +171,23 @@ function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc})
   return(<div>
     {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
     {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Sales Email Marketing {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
-    <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
       <KPI label="Sales Engaged" value={cur.salesEngaged} color={C.main} sub={prv?<Badge cur={cur.salesEngaged} prev={prv.salesEngaged}/>:null}/>
       <KPI label="Sales Shoppers" value={cur.salesShoppers} color={C.acc1} sub={prv?<Badge cur={cur.salesShoppers} prev={prv.salesShoppers}/>:null}/>
       <KPI label="Sales Leads" value={cur.salesLeads} color={C.sec} sub={prv?<Badge cur={cur.salesLeads} prev={prv.salesLeads}/>:null}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
       <KPI label="Sales Influenced" value={cur.salesInfluenced} color={C.green} sub={prv?<Badge cur={cur.salesInfluenced} prev={prv.salesInfluenced}/>:null}/>
       <KPI label="Sales Winback" value={cur.salesWinback} color={C.purple} sub={prv?<Badge cur={cur.salesWinback} prev={prv.salesWinback}/>:null}/>
       <KPI label="New Customer Sales" value={newCustCount} color={C.teal} sub={prevNewCustCount!==null?<Badge cur={newCustCount} prev={prevNewCustCount}/>:null}/>
     </div>
-    <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
       <KPI label="Sales Gross" value={cur.salesGross} fmt="money" color={C.green} sub={prv?<MoneyBadge cur={cur.salesGross} prev={prv.salesGross}/>:null}/>
       <KPI label="Winback Profit" value={cur.salesWinbackProfit} fmt="money" color={C.purple} sub={prv?<MoneyBadge cur={cur.salesWinbackProfit} prev={prv.salesWinbackProfit}/>:null}/>
       <KPI label="Monthly Cost" value={cur.monthlyCost} fmt="money" color={C.amber}/>
       <KPI label="Sales ROI %" value={cur.salesROI} fmt="pct" color={cur.salesROI>=100?C.green:C.red}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:20}}>
       <KPI label="Winback Sales %" value={cur.winbackSalesPct} fmt="pct" color={C.teal}/>
       <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
       <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
@@ -475,16 +479,17 @@ function CustomerDataTab({sheetTabs,locations}){
   const[selectedTab,setSelectedTab]=useState("");
   const[custData,setCustData]=useState(null);const[custHeaders,setCustHeaders]=useState([]);
   const[loading,setLoading]=useState(false);const[error,setError]=useState("");
+  const[monthFilter,setMonthFilter]=useState("");
   const{sortState,onSort,doSort}=useSort("col0","desc");
 
   const apiFailed=sheetTabs.length===1&&(sheetTabs[0].name==="_API_ERROR_"||sheetTabs[0].name==="_DISCOVERY_FAILED_");
-  const validTabs=apiFailed?[]:sheetTabs;
+  const validTabs=useMemo(()=>{
+    const tabs=apiFailed?[]:sheetTabs;
+    return[...tabs].sort((a,b)=>a.name.localeCompare(b.name));
+  },[sheetTabs,apiFailed]);
 
-  // Columns to hide (case-insensitive partial match)
   const HIDDEN_COLS=["front end gross","back end gross","frontend gross","backend gross","front-end gross","back-end gross"];
-  // Columns to format as dollars (case-insensitive partial match)
   const DOLLAR_COLS=["total gross","winback profit","gross profit","profit"];
-
   const isHidden=(h)=>{const lc=h.toLowerCase();return HIDDEN_COLS.some(hc=>lc.includes(hc));};
   const isDollar=(h)=>{const lc=h.toLowerCase();return DOLLAR_COLS.some(dc=>lc.includes(dc));};
   const fmtCell=(val,h)=>{
@@ -495,27 +500,22 @@ function CustomerDataTab({sheetTabs,locations}){
   };
 
   const loadSheet=useCallback(async(sheetName)=>{
-    if(!sheetName)return;setLoading(true);setError("");setCustData(null);
+    if(!sheetName)return;setLoading(true);setError("");setCustData(null);setMonthFilter("");
     try{
       const resp=await fetch(SHEETS_API+"?action=data&sheetName="+encodeURIComponent(sheetName));
       if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||"HTTP "+resp.status);}
       const{headers,data:records}=await resp.json();
       if(records&&records.length>0){
-        // Filter out hidden columns
         const visibleHdrs=(headers||[]).filter(h=>h.trim()!==""&&!isHidden(h));
         setCustHeaders(visibleHdrs);
-        // Find year and month column indices for sorting (use original headers for mapping)
         const allHdrs=(headers||[]).filter(h=>h.trim()!=="");
         const yearCol=allHdrs.findIndex(h=>{const lc=h.toLowerCase();return lc==="year";});
         const monthCol=allHdrs.findIndex(h=>{const lc=h.toLowerCase();return lc==="month";});
         const dateCol=allHdrs.findIndex(h=>{const lc=h.toLowerCase();return lc.includes("date");});
-        // Map visible headers to their column index
-        const visCols=visibleHdrs.map((h,ci)=>({origHeader:h,colKey:"col"+ci}));
+        const MMAP={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
         const mapped=records.map((row,idx)=>{
           const obj={_idx:idx,_sortYear:0,_sortMonth:0};
           visibleHdrs.forEach((h,ci)=>{obj["col"+ci]=row[h]||"";});
-          // Extract year/month for default sort
-          const MMAP={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
           if(yearCol>=0)obj._sortYear=parseInt(row[allHdrs[yearCol]])||0;
           if(monthCol>=0){const mv=(row[allHdrs[monthCol]]||"").trim().toLowerCase();obj._sortMonth=MMAP[mv]||parseInt(mv)||0;}
           if(dateCol>=0&&!obj._sortYear){
@@ -524,7 +524,6 @@ function CustomerDataTab({sheetTabs,locations}){
           }
           return obj;
         });
-        // Sort by year desc, then month desc by default
         mapped.sort((a,b)=>b._sortYear-a._sortYear||b._sortMonth-a._sortMonth);
         setCustData(mapped);
       }else{setError("No data found in this sheet.");}
@@ -536,7 +535,22 @@ function CustomerDataTab({sheetTabs,locations}){
     if(selectedTab&&validTabs.length){loadSheet(selectedTab);}
   },[selectedTab,validTabs,loadSheet]);
 
-  const sorted=custData?doSort(custData):[];
+  // Build available month/year options from loaded data
+  const monthOptions=useMemo(()=>{
+    if(!custData)return[];
+    const set=new Set();
+    custData.forEach(r=>{if(r._sortYear&&r._sortMonth)set.add(`${r._sortYear}-${String(r._sortMonth).padStart(2,"0")}`);});
+    return[...set].sort().reverse().map(k=>{const[y,m]=k.split("-").map(Number);return{key:k,label:`${MN[m]} ${y}`};});
+  },[custData]);
+
+  // Filter and sort
+  const filtered=useMemo(()=>{
+    if(!custData)return[];
+    if(!monthFilter)return custData;
+    const[fy,fm]=monthFilter.split("-").map(Number);
+    return custData.filter(r=>r._sortYear===fy&&r._sortMonth===fm);
+  },[custData,monthFilter]);
+  const sorted=doSort(filtered);
 
   return(<div>
     {validTabs.length>0&&(<div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
@@ -545,6 +559,13 @@ function CustomerDataTab({sheetTabs,locations}){
         <option value="">{"\u2014"} Select Dealership {"\u2014"}</option>
         {validTabs.map(t=><option key={t.sheetId} value={t.name}>{t.name}</option>)}
       </select>
+      {monthOptions.length>0&&(<>
+        <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>MONTH:</span>
+        <select value={monthFilter} onChange={e=>setMonthFilter(e.target.value)} style={selStyle}>
+          <option value="">All Months</option>
+          {monthOptions.map(o=><option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
+      </>)}
       <span style={{fontSize:13,color:"#7a8a9a"}}>Customer-specific data from email marketing for <strong>Sales</strong></span>
     </div>)}
 
@@ -587,8 +608,9 @@ function CustomerDataTab({sheetTabs,locations}){
           {custHeaders.map((h,ci)=>(<td key={ci} style={{padding:"9px 12px",fontSize:13,textAlign:ci===0?"left":"right",background:i%2===0?"#f4f7fc":"white",whiteSpace:"nowrap",maxWidth:300,overflow:"hidden",textOverflow:"ellipsis",fontWeight:ci===0?600:isDollar(h)?600:400,color:ci===0?C.main:isDollar(h)?C.green:undefined}}>{fmtCell(row["col"+ci],h)}</td>))}
         </tr>))}</tbody>
       </table>
-      <div style={{padding:"12px 0",fontSize:13,color:"#7a8a9a",textAlign:"right"}}>{sorted.length} customer records</div>
+      <div style={{padding:"12px 0",fontSize:13,color:"#7a8a9a",textAlign:"right"}}>{sorted.length} customer records{monthFilter?" (filtered)":""}</div>
     </div>)}
+    {custData&&sorted.length===0&&monthFilter&&(<div style={{padding:40,textAlign:"center",color:"#999"}}>No records found for {monthOptions.find(o=>o.key===monthFilter)?.label||monthFilter}.</div>)}
   </div>);
 }
 
