@@ -633,6 +633,7 @@ export default function App(){
   const[sheetTabs,setSheetTabs]=useState([]);const[refreshing,setRefreshing]=useState(false);
   const[downloading,setDownloading]=useState(false);const[dlProgress,setDlProgress]=useState("");
   const[captureMode,setCaptureMode]=useState(false);const[captureLoc,setCaptureLoc]=useState("");
+  const[custUnlocked,setCustUnlocked]=useState(false);const[custPwInput,setCustPwInput]=useState("");const[custPwError,setCustPwError]=useState(false);
   const contentRef=useRef(null);
 
   const fetchData=useCallback(async(isRefresh)=>{
@@ -754,7 +755,23 @@ export default function App(){
       {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="dealerSales"&&<DealerSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
       {activeTab==="dealerService"&&<DealerServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
-      {activeTab==="customerData"&&<CustomerDataTab sheetTabs={sheetTabs} locations={locations}/>}
+      {activeTab==="customerData"&&(custUnlocked?<CustomerDataTab sheetTabs={sheetTabs} locations={locations}/>:(
+        <div style={{display:"flex",justifyContent:"center",paddingTop:60}}>
+          <div style={{background:"white",borderRadius:14,padding:"40px 48px",boxShadow:"0 2px 12px rgba(0,0,0,0.08)",textAlign:"center",maxWidth:400,width:"100%"}}>
+            <div style={{width:56,height:56,borderRadius:"50%",background:"#f0f4ff",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={C.main} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            <div style={{fontSize:20,fontWeight:800,color:C.main,marginBottom:8}}>Customer Data Protected</div>
+            <div style={{fontSize:14,color:"#7a8a9a",marginBottom:24}}>Enter the password to access customer-specific data.</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              <input type="password" value={custPwInput} onChange={e=>{setCustPwInput(e.target.value);setCustPwError(false);}}
+                onKeyDown={e=>{if(e.key==="Enter"){if(custPwInput===atob("Z2FyYmVyMTkwNw==")){setCustUnlocked(true);}else{setCustPwError(true);setCustPwInput("");}}}}
+                placeholder="Enter password" style={{padding:"12px 16px",borderRadius:10,border:custPwError?"2px solid "+C.red:"2px solid #dce3ec",fontSize:15,fontWeight:600,width:200,outline:"none",transition:"border 0.2s"}}/>
+              <button onClick={()=>{if(custPwInput===atob("Z2FyYmVyMTkwNw==")){setCustUnlocked(true);}else{setCustPwError(true);setCustPwInput("");}}}
+                style={{padding:"12px 24px",borderRadius:10,background:C.sec,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Unlock</button>
+            </div>
+            {custPwError&&<div style={{color:C.red,fontSize:13,fontWeight:600,marginTop:12}}>Incorrect password. Please try again.</div>}
+          </div>
+        </div>
+      ))}
     </div>
   </div>);
 }
