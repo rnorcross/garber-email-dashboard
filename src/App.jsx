@@ -176,19 +176,19 @@ function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc})
       <KPI label="Sales Shoppers" value={cur.salesShoppers} color={C.acc1} sub={prv?<Badge cur={cur.salesShoppers} prev={prv.salesShoppers}/>:null}/>
       <KPI label="Sales Leads" value={cur.salesLeads} color={C.sec} sub={prv?<Badge cur={cur.salesLeads} prev={prv.salesLeads}/>:null}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
       <KPI label="Sales Influenced" value={cur.salesInfluenced} color={C.green} sub={prv?<Badge cur={cur.salesInfluenced} prev={prv.salesInfluenced}/>:null}/>
+      <KPI label="Sales Gross" value={cur.salesGross} fmt="money" color={C.green} sub={prv?<MoneyBadge cur={cur.salesGross} prev={prv.salesGross}/>:null}/>
       <KPI label="Sales Winback" value={cur.salesWinback} color={C.purple} sub={prv?<Badge cur={cur.salesWinback} prev={prv.salesWinback}/>:null}/>
-      <KPI label="New Customer Sales" value={newCustCount} color={C.teal} sub={prevNewCustCount!==null?<Badge cur={newCustCount} prev={prevNewCustCount}/>:null}/>
+      <KPI label="Winback Profit" value={cur.salesWinbackProfit} fmt="money" color={C.purple} sub={prv?<MoneyBadge cur={cur.salesWinbackProfit} prev={prv.salesWinbackProfit}/>:null}/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
-      <KPI label="Sales Gross" value={cur.salesGross} fmt="money" color={C.green} sub={prv?<MoneyBadge cur={cur.salesGross} prev={prv.salesGross}/>:null}/>
-      <KPI label="Winback Profit" value={cur.salesWinbackProfit} fmt="money" color={C.purple} sub={prv?<MoneyBadge cur={cur.salesWinbackProfit} prev={prv.salesWinbackProfit}/>:null}/>
       <KPI label="Monthly Cost" value={cur.monthlyCost} fmt="money" color={C.amber}/>
       <KPI label="Sales ROI %" value={cur.salesROI} fmt="pct" color={cur.salesROI>=100?C.green:C.red}/>
-    </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:20}}>
       <KPI label="Winback Sales %" value={cur.winbackSalesPct} fmt="pct" color={C.teal}/>
+      <KPI label="New Customer Sales" value={newCustCount} color={C.teal} sub={prevNewCustCount!==null?<Badge cur={newCustCount} prev={prevNewCustCount}/>:null}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
       <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
       <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
     </div>
@@ -681,7 +681,7 @@ export default function App(){
           setCaptureLoc(loc);
           await new Promise(r=>setTimeout(r,500));
           if(contentRef.current){
-            const canvas=await captureTab(contentRef.current,{scale:2,bg:"#ffffff"});
+            const canvas=await captureTab(contentRef.current,{scale:2,bg:"#edf1f7"});
             const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.95));
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
             zip.file(`${safeLoc}_${tab.label}_${sp}.jpg`,blob);
@@ -707,7 +707,7 @@ export default function App(){
     <div style={{fontSize:15,color:"#666",marginBottom:24}}>{error}</div>
     <button onClick={()=>fetchData(false)} style={{padding:"12px 28px",borderRadius:10,background:C.sec,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Retry</button></div></div>);
 
-  return(<div style={{fontFamily:"'DM Sans',system-ui,sans-serif",background:captureMode?"#ffffff":C.bg,minHeight:"100vh",color:C.main,fontSize:16}}>
+  return(<div style={{fontFamily:"'DM Sans',system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.main,fontSize:16}}>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     {dlProgress&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(7,42,96,0.85)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20}}>
       <div style={{fontSize:48,animation:"spin 2s linear infinite"}}>{"\ud83d\udce6"}</div>
@@ -737,7 +737,7 @@ export default function App(){
       </div>
     </div>
 
-    <div ref={contentRef} style={{padding:captureMode?"24px 28px 20px":"24px 36px 48px",maxWidth:captureMode?1200:undefined,background:captureMode?"white":"transparent",borderRadius:captureMode?14:0}}>
+    <div ref={contentRef} style={{padding:captureMode?"24px 28px 20px":"24px 36px 48px",maxWidth:captureMode?1200:undefined}}>
       {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
