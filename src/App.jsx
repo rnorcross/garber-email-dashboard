@@ -71,8 +71,8 @@ function aggService(rows){const o={serviceShoppers:0,serviceLeads:0,serviceROs:0
 function aggGoogle(rows){const o={clicksGoogle:0,pageViewsGoogle:0,leadsGoogle:0,phoneCallsGoogle:0,spendGoogle:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});return o;}
 function aggFB(rows){const o={clicksFB:0,pageViewsFB:0,leadsFB:0,phoneCallsFB:0,spendFB:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});return o;}
 
-const Badge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} vs PM</span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{typeof cur==="number"&&cur%1!==0?d.toFixed(1):d.toLocaleString()} <span style={{fontWeight:600,fontSize:12}}>vs PM</span></span>;};
-const MoneyBadge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} vs PM</span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{fmtMoney(d)} <span style={{fontWeight:600,fontSize:12}}>vs PM</span></span>;};
+const Badge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:"#99AAAA"}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{typeof cur==="number"&&cur%1!==0?d.toFixed(1):d.toLocaleString()} <span style={{fontWeight:600,fontSize:12,color:"#99AAAA"}}>vs PM</span></span>;};
+const MoneyBadge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:"#99AAAA"}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{fmtMoney(d)} <span style={{fontWeight:600,fontSize:12,color:"#99AAAA"}}>vs PM</span></span>;};
 
 const KPI=({label,value,fmt="num",color=C.main,sub})=>(
   <div style={{background:"white",borderRadius:14,padding:"22px 24px",minWidth:150,flex:1,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderTop:`4px solid ${color}`}}>
@@ -480,7 +480,7 @@ function CustomerDataTab({sheetTabs,locations}){
   const[custData,setCustData]=useState(null);const[custHeaders,setCustHeaders]=useState([]);
   const[loading,setLoading]=useState(false);const[error,setError]=useState("");
   const[monthFilter,setMonthFilter]=useState("");
-  const{sortState,onSort,doSort}=useSort("col0","desc");
+  const{sortState,onSort,doSort}=useSort("_sortYear","desc");
 
   const apiFailed=sheetTabs.length===1&&(sheetTabs[0].name==="_API_ERROR_"||sheetTabs[0].name==="_DISCOVERY_FAILED_");
   const validTabs=useMemo(()=>{
@@ -681,10 +681,10 @@ export default function App(){
           setCaptureLoc(loc);
           await new Promise(r=>setTimeout(r,500));
           if(contentRef.current){
-            const canvas=await captureTab(contentRef.current,{scale:1,bg:"#ffffff"});
-            const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.92));
+            const canvas=await captureTab(contentRef.current,{scale:2,bg:"#ffffff"});
+            const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.95));
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
-            zip.file(`${tab.label}_${safeLoc}_${sp}.jpg`,blob);
+            zip.file(`${safeLoc}_${tab.label}_${sp}.jpg`,blob);
           }
         }
       }
@@ -707,7 +707,7 @@ export default function App(){
     <div style={{fontSize:15,color:"#666",marginBottom:24}}>{error}</div>
     <button onClick={()=>fetchData(false)} style={{padding:"12px 28px",borderRadius:10,background:C.sec,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Retry</button></div></div>);
 
-  return(<div style={{fontFamily:"'DM Sans',system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.main,fontSize:16}}>
+  return(<div style={{fontFamily:"'DM Sans',system-ui,sans-serif",background:captureMode?"#ffffff":C.bg,minHeight:"100vh",color:C.main,fontSize:16}}>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     {dlProgress&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(7,42,96,0.85)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20}}>
       <div style={{fontSize:48,animation:"spin 2s linear infinite"}}>{"\ud83d\udce6"}</div>
@@ -737,7 +737,7 @@ export default function App(){
       </div>
     </div>
 
-    <div ref={contentRef} style={{padding:captureMode?"24px 28px 20px":"24px 36px 48px",maxWidth:captureMode?1920:undefined,background:captureMode?"white":"transparent",borderRadius:captureMode?14:0}}>
+    <div ref={contentRef} style={{padding:captureMode?"24px 28px 20px":"24px 36px 48px",maxWidth:captureMode?1200:undefined,background:captureMode?"white":"transparent",borderRadius:captureMode?14:0}}>
       {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
