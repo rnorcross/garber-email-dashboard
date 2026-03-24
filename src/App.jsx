@@ -74,9 +74,20 @@ function aggFB(rows){const o={clicksFB:0,pageViewsFB:0,leadsFB:0,phoneCallsFB:0,
 const Badge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:"#99AAAA"}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{typeof cur==="number"&&cur%1!==0?d.toFixed(1):d.toLocaleString()} <span style={{fontWeight:600,fontSize:12,color:"#99AAAA"}}>vs PM</span></span>;};
 const MoneyBadge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:"#99AAAA"}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{fmtMoney(d)} <span style={{fontWeight:600,fontSize:12,color:"#99AAAA"}}>vs PM</span></span>;};
 
-const KPI=({label,value,fmt="num",color=C.main,sub})=>(
+const InfoTip=({text})=>{
+  const[show,setShow]=useState(false);
+  return(<span style={{position:"relative",display:"inline-flex",marginLeft:6,cursor:"help",verticalAlign:"middle"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}>
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.5" stroke="#b0bec5" strokeWidth="1"/><text x="8" y="12" textAnchor="middle" fontSize="10" fontWeight="700" fill="#b0bec5" fontFamily="Arial">i</text></svg>
+    {show&&<div style={{position:"absolute",bottom:"calc(100% + 8px)",left:"50%",transform:"translateX(-50%)",background:"#1e293b",color:"white",fontSize:12,lineHeight:1.5,fontWeight:400,padding:"10px 14px",borderRadius:8,width:260,textTransform:"none",letterSpacing:0,zIndex:100,boxShadow:"0 4px 16px rgba(0,0,0,0.2)",pointerEvents:"none"}}>
+      {text}
+      <div style={{position:"absolute",top:"100%",left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"6px solid #1e293b"}}/>
+    </div>}
+  </span>);
+};
+
+const KPI=({label,value,fmt="num",color=C.main,sub,tip})=>(
   <div style={{background:"white",borderRadius:14,padding:"22px 24px",minWidth:150,flex:1,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderTop:`4px solid ${color}`}}>
-    <div style={{fontSize:12,color:"#7a8a9a",fontWeight:600,textTransform:"uppercase",letterSpacing:1.1,marginBottom:6}}>{label}</div>
+    <div style={{fontSize:12,color:"#7a8a9a",fontWeight:600,textTransform:"uppercase",letterSpacing:1.1,marginBottom:6}}>{label}{tip&&<InfoTip text={tip}/>}</div>
     <div style={{fontSize:32,fontWeight:800,color,lineHeight:1.1}}>{fmt==="money"?fmtMoney(value):fmt==="pct"?fmtPct(value):fmtNum(value)}</div>
     {sub&&<div style={{fontSize:13,color:"#7a8a9a",marginTop:6}}>{sub}</div>}
   </div>
@@ -172,25 +183,25 @@ function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc})
     {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
     {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Sales Email Marketing {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
-      <KPI label="Sales Engaged" value={cur.salesEngaged} color={C.main} sub={prv?<Badge cur={cur.salesEngaged} prev={prv.salesEngaged}/>:null}/>
-      <KPI label="Sales Shoppers" value={cur.salesShoppers} color={C.acc1} sub={prv?<Badge cur={cur.salesShoppers} prev={prv.salesShoppers}/>:null}/>
-      <KPI label="Sales Leads" value={cur.salesLeads} color={C.sec} sub={prv?<Badge cur={cur.salesLeads} prev={prv.salesLeads}/>:null}/>
+      <KPI label="Sales Engaged" value={cur.salesEngaged} color={C.main} sub={prv?<Badge cur={cur.salesEngaged} prev={prv.salesEngaged}/>:null} tip="Shoppers who have been sent a campaign."/>
+      <KPI label="Sales Shoppers" value={cur.salesShoppers} color={C.acc1} sub={prv?<Badge cur={cur.salesShoppers} prev={prv.salesShoppers}/>:null} tip="Shoppers who have engaged with content by clicking a link or replying to a campaign."/>
+      <KPI label="Sales Leads" value={cur.salesLeads} color={C.sec} sub={prv?<Badge cur={cur.salesLeads} prev={prv.salesLeads}/>:null} tip="Number of leads submitted to the CRM from Engaged Shoppers within 90 days of the selected date."/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
-      <KPI label="Sales Influenced" value={cur.salesInfluenced} color={C.green} sub={prv?<Badge cur={cur.salesInfluenced} prev={prv.salesInfluenced}/>:null}/>
-      <KPI label="Sales Gross" value={cur.salesGross} fmt="money" color={C.green} sub={prv?<MoneyBadge cur={cur.salesGross} prev={prv.salesGross}/>:null}/>
-      <KPI label="Sales Winback" value={cur.salesWinback} color={C.purple} sub={prv?<Badge cur={cur.salesWinback} prev={prv.salesWinback}/>:null}/>
-      <KPI label="Winback Profit" value={cur.salesWinbackProfit} fmt="money" color={C.purple} sub={prv?<MoneyBadge cur={cur.salesWinbackProfit} prev={prv.salesWinbackProfit}/>:null}/>
+      <KPI label="Sales Influenced" value={cur.salesInfluenced} color={C.green} sub={prv?<Badge cur={cur.salesInfluenced} prev={prv.salesInfluenced}/>:null} tip="Number of closed sales from Engaged Shoppers within 45 days of the selected date."/>
+      <KPI label="Sales Gross" value={cur.salesGross} fmt="money" color={C.green} sub={prv?<MoneyBadge cur={cur.salesGross} prev={prv.salesGross}/>:null} tip="Total gross in dollars generated from total sales influenced amount."/>
+      <KPI label="Sales Winback" value={cur.salesWinback} color={C.purple} sub={prv?<Badge cur={cur.salesWinback} prev={prv.salesWinback}/>:null} tip="Number of sales from sales influenced that were non-active customers in our CRM from past 45 days."/>
+      <KPI label="Winback Profit" value={cur.salesWinbackProfit} fmt="money" color={C.purple} sub={prv?<MoneyBadge cur={cur.salesWinbackProfit} prev={prv.salesWinbackProfit}/>:null} tip="Total gross in dollars generated from total sales winback amount."/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:14,marginBottom:14}}>
-      <KPI label="Monthly Cost" value={cur.monthlyCost} fmt="money" color={C.amber}/>
-      <KPI label="Sales ROI %" value={cur.salesROI} fmt="pct" color={cur.salesROI>=100?C.green:C.red}/>
-      <KPI label="Winback Sales %" value={cur.winbackSalesPct} fmt="pct" color={C.teal}/>
-      <KPI label="New Customer Sales" value={newCustCount} color={C.teal} sub={prevNewCustCount!==null?<Badge cur={newCustCount} prev={prevNewCustCount}/>:null}/>
+      <KPI label="Monthly Cost" value={cur.monthlyCost} fmt="money" color={C.amber} tip="The total cost of Fullpath."/>
+      <KPI label="Sales ROI %" value={cur.salesROI} fmt="pct" color={cur.salesROI>=100?C.green:C.red} tip="The percentage ROI based on monthly cost / sales gross of sales influenced total."/>
+      <KPI label="Winback Sales %" value={cur.winbackSalesPct} fmt="pct" color={C.teal} tip="The number of sales from the total sales influenced number that were deemed winback customers."/>
+      <KPI label="New Customer Sales" value={newCustCount} color={C.teal} sub={prevNewCustCount!==null?<Badge cur={newCustCount} prev={prevNewCustCount}/>:null} tip="The number of sales from customers who never purchased a car from our dealership before."/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
-      <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
-      <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>}/>
+      <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>} tip="Percentage of new cars sold from the sales influenced number."/>
+      <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>} tip="Percentage of used cars sold from the sales influenced number."/>
     </div>
     {!captureMode&&<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
       <TrendChart data={filt} periods={last12} valueKey="salesShoppers" label="Sales Shoppers" color={C.acc1} aggFn={aggSales} filterLoc={loc}/>
