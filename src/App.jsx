@@ -679,7 +679,7 @@ export default function App(){
       pdf.save(`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${sp}.pdf`);}catch(e){alert("Export failed: "+e.message);}
     setDownloading(false);};
   const downloadAll=async()=>{if(downloading)return;setDownloading(true);setCaptureMode(true);
-    try{const zip=new JSZip();const origTab=activeTab;
+    try{const zip=new JSZip();const origTab=activeTab;const uploadQueue=[];
       const captureTabs=[
         {id:"groupSales",label:"Sales_Email",locs:locations},
         {id:"groupService",label:"Service_Email",locs:locations},
@@ -696,14 +696,45 @@ export default function App(){
             const canvas=await captureTab(contentRef.current,{scale:2,bg:"#edf1f7"});
             const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.95));
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
-            zip.file(`${safeLoc}_${tab.label}_${sp}.jpg`,blob);
+            const fileName=`${safeLoc}_${tab.label}_${sp}.jpg`;
+            zip.file(fileName,blob);
+            // Collect base64 for upload
+            const b64=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(",")[1]);reader.readAsDataURL(blob);});
+            uploadQueue.push({fileName,imageData:b64});
           }
         }
       }
       setActiveTab(origTab);setCaptureMode(false);setCaptureLoc("");
+
+      // Step 1: Download ZIP
       setDlProgress("Creating ZIP...");
-      const content=await zip.generateAsync({type:"blob"});const link=document.createElement("a");
-      link.download=`Garber_Fullpath_Report_${sp}.zip`;link.href=URL.createObjectURL(content);link.click();
+      const zipContent=await zip.generateAsync({type:"blob"});const link=document.createElement("a");
+      link.download=`Garber_Fullpath_Report_${sp}.zip`;link.href=URL.createObjectURL(zipContent);link.click();
+
+      // Step 2: Upload to Drive + refresh Slides (non-blocking — don't fail the whole export if this errors)
+      if(uploadQueue.length>0){
+        setDlProgress(`Uploading ${uploadQueue.length} images to Drive...`);
+        try{
+          // Upload in batches of 10 to avoid request size limits
+          const batchSize=10;
+          for(let i=0;i<uploadQueue.length;i+=batchSize){
+            const batch=uploadQueue.slice(i,i+batchSize);
+            setDlProgress(`Uploading to Drive (${Math.min(i+batchSize,uploadQueue.length)}/${uploadQueue.length})...`);
+            const resp=await fetch("/api/publish?action=upload-batch",{
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({files:batch}),
+            });
+            if(resp.ok){const r=await resp.json();console.log("[Publish] Batch uploaded:",r);}
+            else{const e=await resp.json().catch(()=>({}));console.warn("[Publish] Upload batch error:",e.error||resp.status);}
+          }
+          // If the last batch triggered auto-refresh, we're done. Otherwise manually refresh.
+          setDlProgress("Refreshing Google Slides...");
+          const refreshResp=await fetch("/api/publish?action=refresh");
+          if(refreshResp.ok){const r=await refreshResp.json();console.log("[Publish] Slides refresh:",r);}
+          else{console.warn("[Publish] Slides refresh error:",await refreshResp.text());}
+        }catch(e){console.warn("[Publish] Upload/refresh failed (ZIP still downloaded):",e);}
+      }
     }catch(e){alert("Export failed: "+e.message);setCaptureMode(false);setCaptureLoc("");}
     setDlProgress("");setDownloading(false);};
 
