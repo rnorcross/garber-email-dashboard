@@ -711,29 +711,33 @@ export default function App(){
       const zipContent=await zip.generateAsync({type:"blob"});const link=document.createElement("a");
       link.download=`Garber_Fullpath_Report_${sp}.zip`;link.href=URL.createObjectURL(zipContent);link.click();
 
-      // Step 2: Upload to Drive + refresh Slides (non-blocking — don't fail the whole export if this errors)
+      // Step 2: Upload to Drive + refresh Slides
       if(uploadQueue.length>0){
-        setDlProgress(`Uploading ${uploadQueue.length} images to Drive...`);
-        try{
-          // Upload in batches of 10 to avoid request size limits
-          const batchSize=10;
-          for(let i=0;i<uploadQueue.length;i+=batchSize){
-            const batch=uploadQueue.slice(i,i+batchSize);
-            setDlProgress(`Uploading to Drive (${Math.min(i+batchSize,uploadQueue.length)}/${uploadQueue.length})...`);
-            const resp=await fetch("/api/publish?action=upload-batch",{
+        let uploadErrors=0;let lastError="";
+        for(let i=0;i<uploadQueue.length;i++){
+          setDlProgress(`Uploading to Drive (${i+1}/${uploadQueue.length}): ${uploadQueue[i].fileName}...`);
+          try{
+            const resp=await fetch("/api/publish?action=upload",{
               method:"POST",
               headers:{"Content-Type":"application/json"},
-              body:JSON.stringify({files:batch}),
+              body:JSON.stringify(uploadQueue[i]),
             });
-            if(resp.ok){const r=await resp.json();console.log("[Publish] Batch uploaded:",r);}
-            else{const e=await resp.json().catch(()=>({}));console.warn("[Publish] Upload batch error:",e.error||resp.status);}
-          }
-          // If the last batch triggered auto-refresh, we're done. Otherwise manually refresh.
+            if(resp.ok){const r=await resp.json();console.log("[Publish] Uploaded:",r.fileName,"→",r.url);}
+            else{const e=await resp.json().catch(()=>({error:"HTTP "+resp.status}));lastError=e.error||"Upload failed";uploadErrors++;console.error("[Publish] Upload error for",uploadQueue[i].fileName,":",lastError);}
+          }catch(e){lastError=e.message;uploadErrors++;console.error("[Publish] Upload exception:",e);}
+        }
+        if(uploadErrors>0){
+          setDlProgress(`Drive upload: ${uploadQueue.length-uploadErrors} succeeded, ${uploadErrors} failed. Last error: ${lastError}`);
+          await new Promise(r=>setTimeout(r,4000));
+        }else{
+          // All uploads succeeded — refresh Slides
           setDlProgress("Refreshing Google Slides...");
-          const refreshResp=await fetch("/api/publish?action=refresh");
-          if(refreshResp.ok){const r=await refreshResp.json();console.log("[Publish] Slides refresh:",r);}
-          else{console.warn("[Publish] Slides refresh error:",await refreshResp.text());}
-        }catch(e){console.warn("[Publish] Upload/refresh failed (ZIP still downloaded):",e);}
+          try{
+            const refreshResp=await fetch("/api/publish?action=refresh");
+            if(refreshResp.ok){const r=await refreshResp.json();console.log("[Publish] Slides refresh:",r);setDlProgress(r.message||"Slides refreshed!");await new Promise(r=>setTimeout(r,2000));}
+            else{const e=await refreshResp.json().catch(()=>({}));setDlProgress("Slides refresh error: "+(e.error||"unknown"));await new Promise(r=>setTimeout(r,3000));}
+          }catch(e){console.warn("[Publish] Slides refresh failed:",e);}
+        }
       }
     }catch(e){alert("Export failed: "+e.message);setCaptureMode(false);setCaptureLoc("");}
     setDlProgress("");setDownloading(false);};
