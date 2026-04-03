@@ -698,9 +698,9 @@ export default function App(){
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
             const fileName=`${safeLoc}_${tab.label}_${sp}.jpg`;
             zip.file(fileName,blob);
-            // Collect base64 for upload
-            const b64=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(",")[1]);reader.readAsDataURL(blob);});
-            uploadQueue.push({fileName,imageData:b64});
+            // Generate a smaller version for Drive upload (0.6 quality keeps it well under 4.5MB limit)
+            const uploadB64=canvas.toDataURL("image/jpeg",0.6).split(",")[1];
+            uploadQueue.push({fileName,imageData:uploadB64});
           }
         }
       }
@@ -727,16 +727,15 @@ export default function App(){
           }catch(e){lastError=e.message;uploadErrors++;console.error("[Publish] Upload exception:",e);}
         }
         if(uploadErrors>0){
-          setDlProgress(`Drive upload: ${uploadQueue.length-uploadErrors} succeeded, ${uploadErrors} failed. Last error: ${lastError}`);
-          await new Promise(r=>setTimeout(r,4000));
+          setDlProgress(`\u26A0 Drive upload: ${uploadQueue.length-uploadErrors}/${uploadQueue.length} succeeded. Error: ${lastError}`);
+          await new Promise(r=>setTimeout(r,8000));
         }else{
-          // All uploads succeeded — refresh Slides
-          setDlProgress("Refreshing Google Slides...");
+          setDlProgress(`\u2705 ${uploadQueue.length} images uploaded to Drive! Refreshing Slides...`);
           try{
             const refreshResp=await fetch("/api/publish?action=refresh");
-            if(refreshResp.ok){const r=await refreshResp.json();console.log("[Publish] Slides refresh:",r);setDlProgress(r.message||"Slides refreshed!");await new Promise(r=>setTimeout(r,2000));}
-            else{const e=await refreshResp.json().catch(()=>({}));setDlProgress("Slides refresh error: "+(e.error||"unknown"));await new Promise(r=>setTimeout(r,3000));}
-          }catch(e){console.warn("[Publish] Slides refresh failed:",e);}
+            if(refreshResp.ok){const r=await refreshResp.json();console.log("[Publish] Slides refresh:",r);setDlProgress(`\u2705 Done! ${uploadQueue.length} images uploaded. ${r.message||""}`);await new Promise(r=>setTimeout(r,4000));}
+            else{const e=await refreshResp.json().catch(()=>({}));setDlProgress(`\u2705 Images uploaded. Slides refresh issue: ${e.error||"See console"}`);await new Promise(r=>setTimeout(r,5000));}
+          }catch(e){setDlProgress(`\u2705 Images uploaded. Slides refresh failed: ${e.message}`);await new Promise(r=>setTimeout(r,5000));}
         }
       }
     }catch(e){alert("Export failed: "+e.message);setCaptureMode(false);setCaptureLoc("");}
