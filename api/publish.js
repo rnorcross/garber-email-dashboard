@@ -235,8 +235,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ files });
     }
 
-    return res.status(400).json({ error: "Invalid action. Use upload, upload-batch, refresh, or list." });
+    // ACTION: test — verify service account auth and folder access
+    if (action === "test") {
+      const listResp = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${folderId}' in parents and trashed=false`)}&fields=files(id,name)&pageSize=5`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!listResp.ok) {
+        const errText = await listResp.text();
+        return res.status(200).json({ success: false, error: `Drive API error (${listResp.status}): ${errText}`, config: { hasSaKey: !!saKey, folderId, slidesId: slidesId || "not set", saEmail: sa.client_email } });
+      }
+      const listData = await listResp.json();
+      return res.status(200).json({ success: true, message: "Service account authenticated and folder accessible.", filesInFolder: (listData.files || []).length, config: { saEmail: sa.client_email, folderId, slidesId: slidesId || "not set" } });
+    }
+
+    return res.status(400).json({ error: "Invalid action. Use test, upload, upload-batch, refresh, or list." });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error("[publish.js] Error:", err);
+    return res.status(500).json({ error: err.message, stack: err.stack?.split("\n").slice(0, 3) });
   }
 }
