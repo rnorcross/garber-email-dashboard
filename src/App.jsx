@@ -33,7 +33,7 @@ function parseOverallCSV(text){
   const colSalesGross=fc("salesgross","gross"),colSalesWinbackProfit=fc("winbackprofit","saleswinbackprofit");
   const colSalesROI=fc("salesroi","roi%"),colWinbackSalesPct=fc("winbacksales%","winbacksalespct");
   const colServiceShoppers=fc("serviceshoppers"),colServiceLeads=fc("serviceleads");
-  const colServiceROs=fc("servicero"),colServiceWinbackROs=fc("servicewinbackro");
+  const colServiceROs=fc("servicero"),colServiceWinbackROs=fc("servicewinbackro","serivcewinbackro");
   const colROValue=fc("rovalue"),colServiceWinbackROValue=fc("servicewinbackrovalue","winbackrovalue");
   const colWinbackServicePct=fc("winbackservice%","winbackservicepct");
   const colClicksGoogle=fc("clicksgoogle"),colPageViewsGoogle=fc("pageviewsgoogle","viewsgoogle");
