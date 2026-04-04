@@ -52,22 +52,47 @@ async function buildMappingFromPresentation(token, presentationId) {
   if (!resp.ok) throw new Error("Slides API error: " + (await resp.text()));
   const pres = await resp.json();
   const mapping = {}; // objectId → filename
+  const debug = []; // for troubleshooting
   for (const slide of pres.slides || []) {
     for (const element of slide.pageElements || []) {
-      if (element.image && element.image.contentUrl) {
-        const url = element.image.contentUrl;
-        // Check if this image URL contains our blob domain
-        if (url.includes(BLOB_DOMAIN) || url.includes("screenshots/")) {
-          // Extract filename from URL
-          const match = url.match(/screenshots\/([^?]+)/);
-          if (match) {
-            mapping[element.objectId] = match[1];
+      if (element.image) {
+        const contentUrl = element.image.contentUrl || "";
+        const sourceUrl = element.image.sourceUrl || "";
+        // Check both URLs for our blob domain or screenshot filenames
+        const urls = [contentUrl, sourceUrl];
+        let matched = false;
+        for (const url of urls) {
+          if (url.includes(BLOB_DOMAIN) || url.includes("screenshots/")) {
+            const m = url.match(/screenshots\/([^?]+)/);
+            if (m) {
+              mapping[element.objectId] = m[1];
+              matched = true;
+              break;
+            }
           }
         }
+        if (!matched) {
+          // Also try matching by filename pattern in the URL (e.g. Garber_Honda_Sales_Email)
+          for (const url of urls) {
+            const decoded = decodeURIComponent(url);
+            const fnMatch = decoded.match(/([\w]+_(?:Sales_Email|Service_Email|Advertising))\.jpg/);
+            if (fnMatch) {
+              mapping[element.objectId] = fnMatch[1] + ".jpg";
+              matched = true;
+              break;
+            }
+          }
+        }
+        debug.push({
+          objectId: element.objectId,
+          contentUrl: contentUrl.substring(0, 120),
+          sourceUrl: sourceUrl.substring(0, 120),
+          matched,
+        });
       }
     }
   }
-  return mapping;
+  return { mapping, debug };
 }
 
 // Replace images using saved objectId mapping
@@ -162,12 +187,12 @@ export default async function handler(req, res) {
       if (!slidesId || !saKey) return res.status(400).json({ error: "GOOGLE_SLIDES_PRESENTATION_ID and GOOGLE_SERVICE_ACCOUNT_KEY required." });
       const sa = JSON.parse(saKey);
       const token = await getAccessToken(sa);
-      const mapping = await buildMappingFromPresentation(token, slidesId);
+      const { mapping, debug } = await buildMappingFromPresentation(token, slidesId);
       const count = Object.keys(mapping).length;
       if (count === 0) {
         return res.status(200).json({
-          success: false, mapped: 0,
-          message: "No images from blob storage found in the presentation. Make sure you inserted images using the blob URLs (Insert → Image → By URL), then try again.",
+          success: false, mapped: 0, debug,
+          message: "No images from blob storage found. Check the debug info to see what URLs Google stored for your images.",
         });
       }
       await saveMapping(mapping);
@@ -201,10 +226,10 @@ export default async function handler(req, res) {
       }
 
       // No saved mapping — try to build one from current presentation
-      mapping = await buildMappingFromPresentation(token, slidesId);
-      if (Object.keys(mapping).length > 0) {
-        await saveMapping(mapping);
-        const result = await replaceByMapping(token, slidesId, mapping, urlMap);
+      const { mapping: newMapping } = await buildMappingFromPresentation(token, slidesId);
+      if (Object.keys(newMapping).length > 0) {
+        await saveMapping(newMapping);
+        const result = await replaceByMapping(token, slidesId, newMapping, urlMap);
         return res.status(200).json({ ...result, method: "auto-detected", note: "Mapping saved for future use." });
       }
 
