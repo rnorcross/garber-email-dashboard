@@ -56,9 +56,9 @@ const KNOWN_MAPPING = {
   "g3d48da36b4c_2_159": "Garber_Chevrolet_Chesaning_Sales_Email.jpg",
   "g3d48da36b4c_2_160": "Garber_Chevrolet_Chesaning_Service_Email.jpg",
   "g3d48da36b4c_2_161": "Garber_Chevrolet_Chesaning_Advertising.jpg",
-  "g3d48da36b4c_2_169": "Garber_Chevrolet_Webster_Sales_Email.jpg",
-  "g3d48da36b4c_2_170": "Garber_Chevrolet_Webster_Service_Email.jpg",
-  "g3d48da36b4c_2_171": "Garber_Chevrolet_Webster_Advertising.jpg",
+  "g3d48da36b4c_4_3": "Garber_Chevrolet_Webster_Sales_Email.jpg",
+  "g3d48da36b4c_4_19": "Garber_Chevrolet_Webster_Service_Email.jpg",
+  "g3d48da36b4c_4_13": "Garber_Chevrolet_Webster_Advertising.jpg",
 };
 
 async function getAccessToken(sa) {
