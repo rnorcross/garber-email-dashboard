@@ -696,7 +696,7 @@ export default function App(){
             const canvas=await captureTab(contentRef.current,{scale:2,bg:"#edf1f7"});
             const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.95));
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
-            const fileName=`${safeLoc}_${tab.label}_${sp}.jpg`;
+            const fileName=`${safeLoc}_${tab.label}.jpg`;
             zip.file(fileName,blob);
             // Generate a smaller version for Drive upload (0.6 quality keeps it well under 4.5MB limit)
             const uploadB64=canvas.toDataURL("image/jpeg",0.6).split(",")[1];
