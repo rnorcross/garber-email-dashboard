@@ -44,52 +44,96 @@ async function saveMapping(mapping) {
   });
 }
 
-// Scan presentation and build mapping from blob URLs found in images
-async function buildMappingFromPresentation(token, presentationId) {
+// Extract all text from a slide's text elements
+function getSlideText(slide) {
+  const texts = [];
+  for (const el of slide.pageElements || []) {
+    if (el.shape && el.shape.text) {
+      for (const te of el.shape.text.textElements || []) {
+        if (te.textRun && te.textRun.content) texts.push(te.textRun.content.trim());
+      }
+    }
+    if (el.table) {
+      for (const row of el.table.tableRows || []) {
+        for (const cell of row.tableCells || []) {
+          if (cell.text) {
+            for (const te of cell.text.textElements || []) {
+              if (te.textRun && te.textRun.content) texts.push(te.textRun.content.trim());
+            }
+          }
+        }
+      }
+    }
+  }
+  return texts.filter(t => t.length > 1).join(" ");
+}
+
+// Try to match slide text to a screenshot filename
+function matchTextToFile(slideText, fileNames) {
+  const text = slideText.toLowerCase();
+  let bestMatch = null;
+  let bestScore = 0;
+  for (const fn of fileNames) {
+    // Extract dealership name and type from filename like "Garber_Honda_Sales_Email.jpg"
+    const parts = fn.replace(".jpg", "").split("_");
+    // Determine the type (Sales_Email, Service_Email, Advertising)
+    let type = "";
+    let dealerParts = [];
+    if (fn.includes("Sales_Email")) { type = "sales"; dealerParts = fn.replace("_Sales_Email.jpg", "").split("_"); }
+    else if (fn.includes("Service_Email")) { type = "service"; dealerParts = fn.replace("_Service_Email.jpg", "").split("_"); }
+    else if (fn.includes("Advertising")) { type = "advertising"; dealerParts = fn.replace("_Advertising.jpg", "").split("_"); }
+    const dealerName = dealerParts.join(" ").toLowerCase();
+    if (!dealerName) continue;
+    // Score: how many dealer name words appear in the slide text?
+    const words = dealerParts.map(w => w.toLowerCase());
+    let score = 0;
+    for (const w of words) { if (text.includes(w.toLowerCase())) score++; }
+    // Bonus for type match
+    if (type === "sales" && (text.includes("sales email") || text.includes("sales_email"))) score += 2;
+    if (type === "service" && (text.includes("service email") || text.includes("service_email"))) score += 2;
+    if (type === "advertising" && (text.includes("advertising") || text.includes("google ads") || text.includes("facebook ads"))) score += 2;
+    if (score > bestScore) { bestScore = score; bestMatch = fn; }
+  }
+  // Require at least 3 matching signals to consider it a match
+  return bestScore >= 3 ? bestMatch : null;
+}
+
+// Scan presentation and build mapping
+async function buildMappingFromPresentation(token, presentationId, fileNames) {
   const resp = await fetch(`https://slides.googleapis.com/v1/presentations/${presentationId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!resp.ok) throw new Error("Slides API error: " + (await resp.text()));
   const pres = await resp.json();
-  const mapping = {}; // objectId → filename
-  const debug = []; // for troubleshooting
+  const mapping = {};
+  const debug = [];
   for (const slide of pres.slides || []) {
-    for (const element of slide.pageElements || []) {
-      if (element.image) {
-        const contentUrl = element.image.contentUrl || "";
-        const sourceUrl = element.image.sourceUrl || "";
-        // Check both URLs for our blob domain or screenshot filenames
-        const urls = [contentUrl, sourceUrl];
-        let matched = false;
-        for (const url of urls) {
-          if (url.includes(BLOB_DOMAIN) || url.includes("screenshots/")) {
-            const m = url.match(/screenshots\/([^?]+)/);
-            if (m) {
-              mapping[element.objectId] = m[1];
-              matched = true;
-              break;
-            }
-          }
+    const slideText = getSlideText(slide);
+    const images = (slide.pageElements || []).filter(e => e.image);
+    if (images.length === 0) continue;
+    const matchedFile = fileNames ? matchTextToFile(slideText, fileNames) : null;
+    for (const img of images) {
+      const contentUrl = img.image.contentUrl || "";
+      const sourceUrl = img.image.sourceUrl || "";
+      let matched = false;
+      // Try URL-based matching first
+      for (const url of [contentUrl, sourceUrl]) {
+        if (url.includes(BLOB_DOMAIN) || url.includes("screenshots/")) {
+          const m = url.match(/screenshots\/([^?]+)/);
+          if (m) { mapping[img.objectId] = m[1]; matched = true; break; }
         }
-        if (!matched) {
-          // Also try matching by filename pattern in the URL (e.g. Garber_Honda_Sales_Email)
-          for (const url of urls) {
-            const decoded = decodeURIComponent(url);
-            const fnMatch = decoded.match(/([\w]+_(?:Sales_Email|Service_Email|Advertising))\.jpg/);
-            if (fnMatch) {
-              mapping[element.objectId] = fnMatch[1] + ".jpg";
-              matched = true;
-              break;
-            }
-          }
-        }
-        debug.push({
-          objectId: element.objectId,
-          contentUrl: contentUrl.substring(0, 120),
-          sourceUrl: sourceUrl.substring(0, 120),
-          matched,
-        });
       }
+      // Try text-based matching
+      if (!matched && matchedFile) {
+        mapping[img.objectId] = matchedFile;
+        matched = true;
+      }
+      debug.push({
+        objectId: img.objectId,
+        slideText: slideText.substring(0, 150),
+        matchedFile: matched ? (mapping[img.objectId] || null) : null,
+        contentUrl: contentUrl.substring(0, 80),
+      });
     }
   }
   return { mapping, debug };
@@ -187,12 +231,14 @@ export default async function handler(req, res) {
       if (!slidesId || !saKey) return res.status(400).json({ error: "GOOGLE_SLIDES_PRESENTATION_ID and GOOGLE_SERVICE_ACCOUNT_KEY required." });
       const sa = JSON.parse(saKey);
       const token = await getAccessToken(sa);
-      const { mapping, debug } = await buildMappingFromPresentation(token, slidesId);
+      const { blobs } = await list({ prefix: "screenshots/" });
+      const fileNames = blobs.map(b => b.pathname.replace("screenshots/", "")).filter(n => !n.includes("_2026-") && !n.includes("_2025-"));
+      const { mapping, debug } = await buildMappingFromPresentation(token, slidesId, fileNames);
       const count = Object.keys(mapping).length;
       if (count === 0) {
         return res.status(200).json({
-          success: false, mapped: 0, debug,
-          message: "No images from blob storage found. Check the debug info to see what URLs Google stored for your images.",
+          success: false, mapped: 0, debug: debug.slice(0, 20),
+          message: "Could not match images to screenshots. Check debug to see what text is on each slide.",
         });
       }
       await saveMapping(mapping);
@@ -226,7 +272,8 @@ export default async function handler(req, res) {
       }
 
       // No saved mapping — try to build one from current presentation
-      const { mapping: newMapping } = await buildMappingFromPresentation(token, slidesId);
+      const fileNames = Object.keys(urlMap);
+      const { mapping: newMapping } = await buildMappingFromPresentation(token, slidesId, fileNames);
       if (Object.keys(newMapping).length > 0) {
         await saveMapping(newMapping);
         const result = await replaceByMapping(token, slidesId, newMapping, urlMap);
