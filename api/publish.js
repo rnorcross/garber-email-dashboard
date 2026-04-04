@@ -4,6 +4,63 @@ import crypto from "crypto";
 const MAPPING_KEY = "slides-mapping.json";
 const BLOB_DOMAIN = "vbaadun5aa5zljfi.public.blob.vercel-storage.com";
 
+// Hardcoded objectId → filename mapping (built from scan-slides + user input)
+const KNOWN_MAPPING = {
+  "g3d46fd2ccd4_0_0": "Garber_Midland_Sales_Email.jpg",
+  "g3d46fd2ccd4_0_19": "Garber_Midland_Service_Email.jpg",
+  "g3d46fd2ccd4_0_1": "Garber_Midland_Advertising.jpg",
+  "g3d46fd2ccd4_0_26": "Garber_Highland_Sales_Email.jpg",
+  "g3d46fd2ccd4_0_27": "Garber_Highland_Service_Email.jpg",
+  "g3d46fd2ccd4_0_28": "Garber_Highland_Advertising.jpg",
+  "g3d48da36b4c_2_6": "Sunrise_Chevrolet_Sales_Email.jpg",
+  "g3d48da36b4c_2_7": "Sunrise_Chevrolet_Service_Email.jpg",
+  "g3d48da36b4c_2_8": "Sunrise_Chevrolet_Advertising.jpg",
+  "g3d48da36b4c_2_9": "Volvo_Cars_of_Rochester_Sales_Email.jpg",
+  "g3d48da36b4c_2_17": "Volvo_Cars_of_Rochester_Service_Email.jpg",
+  "g3d48da36b4c_2_18": "Hilton_Head_Buick_GMC_Sales_Email.jpg",
+  "g3d48da36b4c_2_23": "Hilton_Head_Cadillac_Sales_Email.jpg",
+  "g3d48da36b4c_2_33": "Hilton_Head_Buick_GMC_Service_Email.jpg",
+  "g3d48da36b4c_2_38": "Hilton_Head_Cadillac_Service_Email.jpg",
+  "g3d48da36b4c_2_41": "Hilton_Head_Buick_GMC_Advertising.jpg",
+  "g3d48da36b4c_2_42": "Garber_Automall_Sales_Email.jpg",
+  "g3d48da36b4c_2_43": "Garber_Honda_Sales_Email.jpg",
+  "g3d48da36b4c_2_51": "Garber_Honda_Service_Email.jpg",
+  "g3d48da36b4c_2_52": "Garber_Buick_Sales_Email.jpg",
+  "g3d48da36b4c_2_53": "Garber_Buick_Advertising.jpg",
+  "g3d48da36b4c_2_54": "Garber_Randall_Chevrolet_Sales_Email.jpg",
+  "g3d48da36b4c_2_62": "Garber_Randall_Chevrolet_Service_Email.jpg",
+  "g3d48da36b4c_2_63": "Garber_Randall_Chevrolet_Advertising.jpg",
+  "g3d48da36b4c_2_70": "Garber_Randall_Buick_GMC_Sales_Email.jpg",
+  "g3d48da36b4c_2_71": "Garber_Randall_Buick_GMC_Service_Email.jpg",
+  "g3d48da36b4c_2_72": "Garber_Randall_Buick_GMC_Advertising.jpg",
+  "g3d48da36b4c_2_73": "Garber_Randall_Cadillac_Sales_Email.jpg",
+  "g3d48da36b4c_2_82": "Garber_CDJR_Saginaw_Sales_Email.jpg",
+  "g3d48da36b4c_2_90": "Garber_CDJR_Saginaw_Service_Email.jpg",
+  "g3d48da36b4c_2_91": "Acura_of_Rochester_Sales_Email.jpg",
+  "g3d48da36b4c_2_99": "Acura_of_Rochester_Service_Email.jpg",
+  "g3d48da36b4c_2_100": "Porsche_Rochester_Sales_Email.jpg",
+  "g3d48da36b4c_2_108": "Porsche_Rochester_Service_Email.jpg",
+  "g3d48da36b4c_2_109": "Porsche_Rochester_Advertising.jpg",
+  "g3d48da36b4c_2_116": "Audi_Rochester_Sales_Email.jpg",
+  "g3d48da36b4c_2_117": "Audi_Rochester_Service_Email.jpg",
+  "g3d48da36b4c_2_118": "Garber_Buick_GMC_Sales_Email.jpg",
+  "g3d48da36b4c_2_126": "Garber_Buick_GMC_Service_Email.jpg",
+  "g3d48da36b4c_2_127": "Garber_Buick_GMC_Advertising.jpg",
+  "g3d48da36b4c_2_134": "Garber_Ford_Bay_City_Sales_Email.jpg",
+  "g3d48da36b4c_2_135": "Garber_Ford_Bay_City_Service_Email.jpg",
+  "g3d48da36b4c_2_142": "Delray_Buick_GMC_Sales_Email.jpg",
+  "g3d48da36b4c_2_143": "Delray_Buick_GMC_Service_Email.jpg",
+  "g3d48da36b4c_2_144": "Delray_Buick_GMC_Advertising.jpg",
+  "g3d48da36b4c_2_151": "Nissan_of_Bradenton_Sales_Email.jpg",
+  "g3d48da36b4c_2_152": "Nissan_of_Bradenton_Service_Email.jpg",
+  "g3d48da36b4c_2_159": "Garber_Chevrolet_Chesaning_Sales_Email.jpg",
+  "g3d48da36b4c_2_160": "Garber_Chevrolet_Chesaning_Service_Email.jpg",
+  "g3d48da36b4c_2_161": "Garber_Chevrolet_Chesaning_Advertising.jpg",
+  "g3d48da36b4c_2_169": "Garber_Chevrolet_Webster_Sales_Email.jpg",
+  "g3d48da36b4c_2_170": "Garber_Chevrolet_Webster_Service_Email.jpg",
+  "g3d48da36b4c_2_171": "Garber_Chevrolet_Webster_Advertising.jpg",
+};
+
 async function getAccessToken(sa) {
   const now = Math.floor(Date.now() / 1000);
   const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
@@ -269,6 +326,13 @@ export default async function handler(req, res) {
       if (mapping && Object.keys(mapping).length > 0) {
         const result = await replaceByMapping(token, slidesId, mapping, urlMap);
         return res.status(200).json({ ...result, method: "saved-mapping" });
+      }
+
+      // Use hardcoded mapping and save it
+      if (Object.keys(KNOWN_MAPPING).length > 0) {
+        await saveMapping(KNOWN_MAPPING);
+        const result = await replaceByMapping(token, slidesId, KNOWN_MAPPING, urlMap);
+        return res.status(200).json({ ...result, method: "hardcoded-mapping", note: "Mapping saved for future use." });
       }
 
       // No saved mapping — try to build one from current presentation
