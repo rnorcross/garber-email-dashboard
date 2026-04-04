@@ -3,7 +3,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import Papa from "papaparse";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import JSZip from "jszip";
 
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTYVu1c2AZGFprO4Qk2sgvY6GDl1PuBAxW-7J5xg4xjIrz-ZCTaxn2oC2vVfCxECbGqOt6e9KkgAjHs/pub?output=csv";
 const SHEETS_API = "/api/sheets";
@@ -679,64 +678,49 @@ export default function App(){
       pdf.save(`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${sp}.pdf`);}catch(e){alert("Export failed: "+e.message);}
     setDownloading(false);};
   const downloadAll=async()=>{if(downloading)return;setDownloading(true);setCaptureMode(true);
-    try{const zip=new JSZip();const origTab=activeTab;const uploadQueue=[];
+    try{const origTab=activeTab;
       const captureTabs=[
         {id:"groupSales",label:"Sales_Email",locs:locations},
         {id:"groupService",label:"Service_Email",locs:locations},
         {id:"groupAds",label:"Advertising",locs:locations.filter(l=>locsWithAdData.has(l))},
       ];
-      let count=0;const total=captureTabs.reduce((a,t)=>a+t.locs.length,0);
+      let count=0;let uploaded=0;let uploadErrors=0;let lastError="";
+      const total=captureTabs.reduce((a,t)=>a+t.locs.length,0);
       for(const tab of captureTabs){
         setActiveTab(tab.id);
         for(const loc of tab.locs){
-          count++;setDlProgress(`Capturing ${tab.label} - ${loc} (${count}/${total})...`);
+          count++;
+          setDlProgress(`Capturing & uploading (${count}/${total}): ${loc}...`);
           setCaptureLoc(loc);
           await new Promise(r=>setTimeout(r,500));
           if(contentRef.current){
             const canvas=await captureTab(contentRef.current,{scale:2,bg:"#edf1f7"});
-            const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.95));
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
             const fileName=`${safeLoc}_${tab.label}.jpg`;
-            zip.file(fileName,blob);
-            // Generate a smaller version for Drive upload (0.6 quality keeps it well under 4.5MB limit)
-            const uploadB64=canvas.toDataURL("image/jpeg",0.6).split(",")[1];
-            uploadQueue.push({fileName,imageData:uploadB64});
+            const imageData=canvas.toDataURL("image/jpeg",0.6).split(",")[1];
+            try{
+              const resp=await fetch("/api/publish?action=upload",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({fileName,imageData}),
+              });
+              if(resp.ok){uploaded++;console.log("[Publish] Uploaded:",fileName);}
+              else{const e=await resp.json().catch(()=>({error:"HTTP "+resp.status}));lastError=e.error||"Upload failed";uploadErrors++;console.error("[Publish] Error:",fileName,lastError);}
+            }catch(e){lastError=e.message;uploadErrors++;console.error("[Publish] Exception:",e);}
           }
         }
       }
       setActiveTab(origTab);setCaptureMode(false);setCaptureLoc("");
-
-      // Step 1: Download ZIP
-      setDlProgress("Creating ZIP...");
-      const zipContent=await zip.generateAsync({type:"blob"});const link=document.createElement("a");
-      link.download=`Garber_Fullpath_Report_${sp}.zip`;link.href=URL.createObjectURL(zipContent);link.click();
-
-      // Step 2: Upload to Drive + refresh Slides
-      if(uploadQueue.length>0){
-        let uploadErrors=0;let lastError="";
-        for(let i=0;i<uploadQueue.length;i++){
-          setDlProgress(`Uploading to Drive (${i+1}/${uploadQueue.length}): ${uploadQueue[i].fileName}...`);
-          try{
-            const resp=await fetch("/api/publish?action=upload",{
-              method:"POST",
-              headers:{"Content-Type":"application/json"},
-              body:JSON.stringify(uploadQueue[i]),
-            });
-            if(resp.ok){const r=await resp.json();console.log("[Publish] Uploaded:",r.fileName,"→",r.url);}
-            else{const e=await resp.json().catch(()=>({error:"HTTP "+resp.status}));lastError=e.error||"Upload failed";uploadErrors++;console.error("[Publish] Upload error for",uploadQueue[i].fileName,":",lastError);}
-          }catch(e){lastError=e.message;uploadErrors++;console.error("[Publish] Upload exception:",e);}
-        }
-        if(uploadErrors>0){
-          setDlProgress(`\u26A0 Drive upload: ${uploadQueue.length-uploadErrors}/${uploadQueue.length} succeeded. Error: ${lastError}`);
-          await new Promise(r=>setTimeout(r,8000));
-        }else{
-          setDlProgress(`\u2705 ${uploadQueue.length} images uploaded to Drive! Refreshing Slides...`);
-          try{
-            const refreshResp=await fetch("/api/publish?action=refresh");
-            if(refreshResp.ok){const r=await refreshResp.json();console.log("[Publish] Slides refresh:",r);setDlProgress(`\u2705 Done! ${uploadQueue.length} images uploaded. ${r.message||""}`);await new Promise(r=>setTimeout(r,4000));}
-            else{const e=await refreshResp.json().catch(()=>({}));setDlProgress(`\u2705 Images uploaded. Slides refresh issue: ${e.error||"See console"}`);await new Promise(r=>setTimeout(r,5000));}
-          }catch(e){setDlProgress(`\u2705 Images uploaded. Slides refresh failed: ${e.message}`);await new Promise(r=>setTimeout(r,5000));}
-        }
+      if(uploadErrors>0){
+        setDlProgress(`\u26A0 Upload: ${uploaded}/${total} succeeded, ${uploadErrors} failed. Error: ${lastError}`);
+        await new Promise(r=>setTimeout(r,8000));
+      }else{
+        setDlProgress(`\u2705 ${uploaded} images published! Refreshing Slides...`);
+        try{
+          const refreshResp=await fetch("/api/publish?action=refresh");
+          if(refreshResp.ok){const r=await refreshResp.json();console.log("[Publish] Slides:",r);setDlProgress(`\u2705 Done! ${uploaded} images published. ${r.message||""}`);await new Promise(r=>setTimeout(r,4000));}
+          else{const e=await refreshResp.json().catch(()=>({}));setDlProgress(`\u2705 ${uploaded} images published. Slides: ${e.error||"See console"}`);await new Promise(r=>setTimeout(r,5000));}
+        }catch(e){setDlProgress(`\u2705 ${uploaded} images published. Slides refresh failed: ${e.message}`);await new Promise(r=>setTimeout(r,5000));}
       }
     }catch(e){alert("Export failed: "+e.message);setCaptureMode(false);setCaptureLoc("");}
     setDlProgress("");setDownloading(false);};
