@@ -297,7 +297,36 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: "Mapping cleared. Run init-slides to rebuild." });
     }
 
-    return res.status(400).json({ error: "Actions: test, upload, list, urls, init-slides, refresh, mapping, clear-mapping" });
+    if (action === "scan-slides") {
+      if (!slidesId || !saKey) return res.status(400).json({ error: "Missing config." });
+      const sa = JSON.parse(saKey);
+      const token = await getAccessToken(sa);
+      const resp = await fetch(`https://slides.googleapis.com/v1/presentations/${slidesId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) throw new Error("Slides API error: " + (await resp.text()));
+      const pres = await resp.json();
+      const slides = (pres.slides || []).map((slide, idx) => {
+        const text = getSlideText(slide);
+        const images = (slide.pageElements || []).filter(e => e.image).map(e => ({
+          objectId: e.objectId,
+          width: Math.round(e.size?.width?.magnitude || 0),
+          height: Math.round(e.size?.height?.magnitude || 0),
+        }));
+        return { slideNumber: idx + 1, slideId: slide.objectId, text: text.substring(0, 200), imageCount: images.length, images };
+      });
+      return res.status(200).json({ totalSlides: slides.length, totalImages: slides.reduce((a, s) => a + s.imageCount, 0), slides });
+    }
+
+    // MANUAL MAPPING — POST a manual objectId → fileName mapping
+    if (action === "set-mapping" && req.method === "POST") {
+      const { mapping } = req.body;
+      if (!mapping || typeof mapping !== "object") return res.status(400).json({ error: "POST body must be { mapping: { objectId: fileName, ... } }" });
+      await saveMapping(mapping);
+      return res.status(200).json({ success: true, saved: Object.keys(mapping).length, message: `Saved ${Object.keys(mapping).length} mappings.` });
+    }
+
+    return res.status(400).json({ error: "Actions: test, upload, list, urls, scan-slides, init-slides, set-mapping, refresh, mapping, clear-mapping" });
   } catch (err) {
     console.error("[publish.js]", err);
     return res.status(500).json({ error: err.message });
