@@ -63,7 +63,11 @@ function fmtMoney(v){if(Math.abs(v)>=1e6)return`$${(v/1e6).toFixed(1)}M`;if(Math
 function fmtNum(v){return v.toLocaleString();}
 function fmtPct(v){return`${v.toFixed(1)}%`;}
 function filterPeriod(data,p){return data.filter(r=>r.year===p.year&&r.month===p.month);}
-function getLast12(periods,sp){const idx=periods.findIndex(p=>p.key===sp);if(idx<0)return periods.slice(-12);const start=Math.max(0,idx-11);return periods.slice(start,idx+1);}
+function filterMulti(data,ps){if(!ps||ps.length===0)return[];const keys=new Set(ps.map(p=>`${p.year}-${p.month}`));return data.filter(r=>keys.has(`${r.year}-${r.month}`));}
+function getSelected(periods,sps){if(!sps||sps.length===0)return[];return periods.filter(p=>sps.includes(p.key)).sort((a,b)=>a.key.localeCompare(b.key));}
+function getPrevWindow(periods,selected){if(!selected||selected.length===0)return[];const earliest=selected[0];const idx=periods.findIndex(p=>p.key===earliest.key);if(idx<=0)return[];const start=Math.max(0,idx-selected.length);return periods.slice(start,idx);}
+function formatPeriodLabel(selected){if(!selected||selected.length===0)return"";if(selected.length===1)return selected[0].label;return`${selected[0].label} \u2014 ${selected[selected.length-1].label}`;}
+function getLast12(periods,sps){if(!sps||sps.length===0)return periods.slice(-12);const latest=sps[sps.length-1];const idx=periods.findIndex(p=>p.key===latest);if(idx<0)return periods.slice(-12);const start=Math.max(0,idx-11);return periods.slice(start,idx+1);}
 
 function aggSales(rows){const o={monthlyCost:0,salesEngaged:0,salesShoppers:0,salesLeads:0,salesInfluenced:0,salesWinback:0,salesGross:0,salesWinbackProfit:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});o.salesROI=o.monthlyCost>0?((o.salesGross/o.monthlyCost)*100):0;o.winbackSalesPct=o.salesInfluenced>0?((o.salesWinback/o.salesInfluenced)*100):0;return o;}
 function aggService(rows){const o={serviceShoppers:0,serviceLeads:0,serviceROs:0,serviceWinbackROs:0,roValue:0,serviceWinbackROValue:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});o.winbackServicePct=o.serviceROs>0?((o.serviceWinbackROs/o.serviceROs)*100):0;return o;}
@@ -122,35 +126,98 @@ const TrendChart=({data,periods,valueKey,label,color,fmt="num",aggFn,filterLoc})
 
 const Section=({title,desc,children})=>(<div style={{background:"white",borderRadius:14,padding:24,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",marginBottom:20}}><div style={{fontSize:17,fontWeight:700,marginBottom:4,color:C.main}}>{title}</div>{desc&&<div style={{fontSize:13,color:"#7a8a9a",marginBottom:16}}>{desc}</div>}{children}</div>);
 
-const FilterBar=({periods,sp,setSp,locations,selectedLoc,setSelectedLoc})=>(
+const PeriodMultiSelect=({periods,sps,setSps})=>{
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    const onClick=(e)=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener("mousedown",onClick);
+    return()=>document.removeEventListener("mousedown",onClick);
+  },[]);
+  const selected=getSelected(periods,sps);
+  const label=selected.length===0?"Select periods":selected.length===1?selected[0].label:selected.length<=3?selected.map(p=>p.short).join(", "):`${selected.length} periods (${selected[0].short} \u2013 ${selected[selected.length-1].short})`;
+  const toggle=(key)=>{
+    if(sps.includes(key)){if(sps.length>1)setSps(sps.filter(k=>k!==key));}
+    else setSps([...sps,key].sort());
+  };
+  const selectLatest=()=>{if(periods.length>0)setSps([periods[periods.length-1].key]);};
+  const selectLast3=()=>{const last=periods.slice(-3);if(last.length>0)setSps(last.map(p=>p.key));};
+  const selectLast6=()=>{const last=periods.slice(-6);if(last.length>0)setSps(last.map(p=>p.key));};
+  const selectLast12=()=>{const last=periods.slice(-12);if(last.length>0)setSps(last.map(p=>p.key));};
+  return(<div ref={ref} style={{position:"relative",display:"inline-block"}}>
+    <button onClick={()=>setOpen(!open)} style={{...selStyle,cursor:"pointer",textAlign:"left",minWidth:240,background:"#fff",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+      <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+      <span style={{fontSize:10,opacity:0.5}}>{"\u25BC"}</span>
+    </button>
+    {open&&(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:100,background:"#fff",border:"1px solid #d0dae5",borderRadius:8,boxShadow:"0 6px 24px rgba(7,42,96,0.18)",minWidth:260,maxHeight:380,overflowY:"auto"}}>
+      <div style={{padding:"8px 10px",borderBottom:"1px solid #eef2f7",display:"flex",gap:6,flexWrap:"wrap"}}>
+        <button onClick={selectLatest} style={presetBtn}>Latest</button>
+        <button onClick={selectLast3} style={presetBtn}>Last 3</button>
+        <button onClick={selectLast6} style={presetBtn}>Last 6</button>
+        <button onClick={selectLast12} style={presetBtn}>Last 12</button>
+      </div>
+      {[...periods].reverse().map(p=>(
+        <label key={p.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",fontSize:14,borderBottom:"1px solid #f5f7fa"}}>
+          <input type="checkbox" checked={sps.includes(p.key)} onChange={()=>toggle(p.key)} style={{cursor:"pointer"}}/>
+          <span>{p.label}</span>
+        </label>
+      ))}
+    </div>)}
+  </div>);
+};
+const presetBtn={padding:"4px 10px",fontSize:12,fontWeight:600,background:"#f5f7fa",border:"1px solid #d0dae5",borderRadius:6,cursor:"pointer",color:"#072a60"};
+
+const FilterBar=({periods,sps,setSps,locations,selectedLoc,setSelectedLoc})=>(
   <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
     <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
-    <select value={sp} onChange={e=>setSp(e.target.value)} style={selStyle}>{periods.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select>
+    <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
     {locations&&(<><span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>DEALERSHIP:</span>
       <select value={selectedLoc} onChange={e=>setSelectedLoc(e.target.value)} style={{...selStyle,maxWidth:340}}><option value="">All Dealerships</option>{locations.map(l=><option key={l} value={l}>{l}</option>)}</select></>)}
   </div>
 );
 
-function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
+function GroupSalesTab({data,periods,sps,setSps,locations,captureMode,captureLoc}){
   const[internalLoc,setInternalLoc]=useState("");
   const loc=captureMode&&captureLoc?captureLoc:internalLoc;
   const[newCustData,setNewCustData]=useState(null);
   const[prevNewCustData,setPrevNewCustData]=useState(null);
-  const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
+  const selected=getSelected(periods,sps);
+  const prevWindow=getPrevWindow(periods,selected);
   const filt=loc?data.filter(r=>r.location===loc):data;
-  const cur=p?aggSales(filterPeriod(filt,p)):null;const prv=prev?aggSales(filterPeriod(filt,prev)):null;
-  const last12=getLast12(periods,sp);
+  const cur=selected.length>0?aggSales(filterMulti(filt,selected)):null;
+  const prv=prevWindow.length>0?aggSales(filterMulti(filt,prevWindow)):null;
+  const last12=getLast12(periods,sps);
+  const periodLabel=formatPeriodLabel(selected);
 
-  // Fetch new customer counts + condition data for current and previous period
+  // Fetch new customer counts + condition data — sums across all selected months
   useEffect(()=>{
-    if(!p)return;
-    fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year)
-      .then(r=>r.json()).then(d=>setNewCustData(d)).catch(()=>setNewCustData(null));
-    if(prev){
-      fetch(SHEETS_API+"?action=newcustomer&month="+prev.month+"&year="+prev.year)
-        .then(r=>r.json()).then(d=>setPrevNewCustData(d)).catch(()=>setPrevNewCustData(null));
+    if(selected.length===0){setNewCustData(null);setPrevNewCustData(null);return;}
+    Promise.all(selected.map(p=>fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year).then(r=>r.json()).catch(()=>null)))
+      .then(results=>{
+        const merged={counts:{},condCounts:{},total:0,condTotal:{new:0,used:0}};
+        for(const d of results){
+          if(!d)continue;
+          if(d.counts)for(const[k,v]of Object.entries(d.counts))merged.counts[k]=(merged.counts[k]||0)+v;
+          if(d.condCounts)for(const[k,v]of Object.entries(d.condCounts)){if(!merged.condCounts[k])merged.condCounts[k]={new:0,used:0};merged.condCounts[k].new+=v.new||0;merged.condCounts[k].used+=v.used||0;}
+          merged.total+=d.total||0;
+          if(d.condTotal){merged.condTotal.new+=d.condTotal.new||0;merged.condTotal.used+=d.condTotal.used||0;}
+        }
+        setNewCustData(merged);
+      });
+    if(prevWindow.length>0){
+      Promise.all(prevWindow.map(p=>fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year).then(r=>r.json()).catch(()=>null)))
+        .then(results=>{
+          const merged={counts:{},condCounts:{},total:0,condTotal:{new:0,used:0}};
+          for(const d of results){
+            if(!d)continue;
+            if(d.counts)for(const[k,v]of Object.entries(d.counts))merged.counts[k]=(merged.counts[k]||0)+v;
+            merged.total+=d.total||0;
+          }
+          setPrevNewCustData(merged);
+        });
     }else{setPrevNewCustData(null);}
-  },[p,prev]);
+  // eslint-disable-next-line
+  },[sps.join(",")]);
 
   const newCustCount=useMemo(()=>{
     if(!newCustData||!newCustData.counts)return 0;
@@ -179,8 +246,8 @@ function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc})
 
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
-    {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
-    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Sales Email Marketing {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
+    {!captureMode&&<FilterBar periods={periods} sps={sps} setSps={setSps} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
+    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Sales Email Marketing {"\u2014"} {loc} {"\u2014"} {periodLabel}</div>}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
       <KPI label="Sales Engaged" value={cur.salesEngaged} color={C.main} sub={prv?<Badge cur={cur.salesEngaged} prev={prv.salesEngaged}/>:null} tip="Shoppers who have been sent a campaign."/>
       <KPI label="Sales Shoppers" value={cur.salesShoppers} color={C.acc1} sub={prv?<Badge cur={cur.salesShoppers} prev={prv.salesShoppers}/>:null} tip="Shoppers who have engaged with content by clicking a link or replying to a campaign."/>
@@ -217,17 +284,20 @@ function GroupSalesTab({data,periods,sp,setSp,locations,captureMode,captureLoc})
   </div>);
 }
 
-function GroupServiceTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
+function GroupServiceTab({data,periods,sps,setSps,locations,captureMode,captureLoc}){
   const[internalLoc,setInternalLoc]=useState("");
   const loc=captureMode&&captureLoc?captureLoc:internalLoc;
-  const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
+  const selected=getSelected(periods,sps);
+  const prevWindow=getPrevWindow(periods,selected);
   const filt=loc?data.filter(r=>r.location===loc):data;
-  const cur=p?aggService(filterPeriod(filt,p)):null;const prv=prev?aggService(filterPeriod(filt,prev)):null;
-  const last12=getLast12(periods,sp);
+  const cur=selected.length>0?aggService(filterMulti(filt,selected)):null;
+  const prv=prevWindow.length>0?aggService(filterMulti(filt,prevWindow)):null;
+  const last12=getLast12(periods,sps);
+  const periodLabel=formatPeriodLabel(selected);
   if(!cur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
   return(<div>
-    {!captureMode&&<FilterBar periods={periods} sp={sp} setSp={setSp} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
-    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Service Email Marketing {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
+    {!captureMode&&<FilterBar periods={periods} sps={sps} setSps={setSps} locations={locations} selectedLoc={loc} setSelectedLoc={setInternalLoc}/>}
+    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>Service Email Marketing {"\u2014"} {loc} {"\u2014"} {periodLabel}</div>}
     <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}>
       <KPI label="Service Shoppers" value={cur.serviceShoppers} color={C.main} sub={prv?<Badge cur={cur.serviceShoppers} prev={prv.serviceShoppers}/>:null}/>
       <KPI label="Service Leads" value={cur.serviceLeads} color={C.sec} sub={prv?<Badge cur={cur.serviceLeads} prev={prv.serviceLeads}/>:null}/>
@@ -250,14 +320,18 @@ function GroupServiceTab({data,periods,sp,setSp,locations,captureMode,captureLoc
   </div>);
 }
 
-function GroupAdsTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
+function GroupAdsTab({data,periods,sps,setSps,locations,captureMode,captureLoc}){
   const[internalLoc,setInternalLoc]=useState("");
   const loc=captureMode&&captureLoc?captureLoc:internalLoc;
-  const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
+  const selected=getSelected(periods,sps);
+  const prevWindow=getPrevWindow(periods,selected);
   const filt=loc?data.filter(r=>r.location===loc):data;
-  const gCur=p?aggGoogle(filterPeriod(filt,p)):null;const gPrv=prev?aggGoogle(filterPeriod(filt,prev)):null;
-  const fCur=p?aggFB(filterPeriod(filt,p)):null;const fPrv=prev?aggFB(filterPeriod(filt,prev)):null;
-  const last12=getLast12(periods,sp);
+  const gCur=selected.length>0?aggGoogle(filterMulti(filt,selected)):null;
+  const gPrv=prevWindow.length>0?aggGoogle(filterMulti(filt,prevWindow)):null;
+  const fCur=selected.length>0?aggFB(filterMulti(filt,selected)):null;
+  const fPrv=prevWindow.length>0?aggFB(filterMulti(filt,prevWindow)):null;
+  const last12=getLast12(periods,sps);
+  const periodLabel=formatPeriodLabel(selected);
   // Compute which dealerships have ANY ad data across all periods
   const locsWithAdData=useMemo(()=>{const s=new Set();data.forEach(r=>{if(r.clicksGoogle>0||r.leadsGoogle>0||r.spendGoogle>0||r.pageViewsGoogle>0||r.phoneCallsGoogle>0||r.clicksFB>0||r.leadsFB>0||r.spendFB>0||r.pageViewsFB>0||r.phoneCallsFB>0)s.add(r.location);});return s;},[data]);
   if(!gCur||!fCur)return<div style={{padding:40,color:"#999",textAlign:"center"}}>No data for selected period.</div>;
@@ -266,14 +340,14 @@ function GroupAdsTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
   return(<div>
     {!captureMode&&<div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
-      <select value={sp} onChange={e=>setSp(e.target.value)} style={selStyle}>{periods.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select>
+      <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>DEALERSHIP:</span>
       <select value={loc} onChange={e=>setInternalLoc(e.target.value)} style={{...selStyle,maxWidth:340}}>
         <option value="">All Dealerships</option>
         {locations.map(l=><option key={l} value={l} disabled={!locsWithAdData.has(l)} style={{color:locsWithAdData.has(l)?C.main:"#ccc"}}>{l}{locsWithAdData.has(l)?"":" (no data)"}</option>)}
       </select>
     </div>}
-    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>{[hasG&&"Google Ads",hasF&&"Facebook Ads"].filter(Boolean).join(" & ")} {"\u2014"} {loc} {"\u2014"} {periods.find(pp=>pp.key===sp)?.label}</div>}
+    {captureMode&&<div style={{padding:"8px 0 12px",fontSize:18,fontWeight:800,color:C.main}}>{[hasG&&"Google Ads",hasF&&"Facebook Ads"].filter(Boolean).join(" & ")} {"\u2014"} {loc} {"\u2014"} {periodLabel}</div>}
     {hasG&&<Section title="Google Ads" desc="Performance metrics for Google search ads promoting service.">
       <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
         <KPI label="Clicks" value={gCur.clicksGoogle} color={C.main} sub={gPrv?<Badge cur={gCur.clicksGoogle} prev={gPrv.clicksGoogle}/>:null}/>
@@ -312,31 +386,39 @@ function GroupAdsTab({data,periods,sp,setSp,locations,captureMode,captureLoc}){
   </div>);
 }
 
-function DealerSalesTab({data,periods,sp,setSp,locations}){
+function DealerSalesTab({data,periods,sps,setSps,locations}){
   const{sortState,onSort,doSort}=useSort("salesInfluenced","desc");
   const[newCustData,setNewCustData]=useState(null);
   const[prevNewCustData,setPrevNewCustData]=useState(null);
-  const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
+  const selected=getSelected(periods,sps);
+  const prevWindow=getPrevWindow(periods,selected);
 
-  // Fetch new customer counts
+  // Fetch new customer counts — sums across all selected months
   useEffect(()=>{
-    if(!p)return;
-    fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year)
-      .then(r=>r.json()).then(d=>setNewCustData(d)).catch(()=>setNewCustData(null));
-    if(prev){
-      fetch(SHEETS_API+"?action=newcustomer&month="+prev.month+"&year="+prev.year)
-        .then(r=>r.json()).then(d=>setPrevNewCustData(d)).catch(()=>setPrevNewCustData(null));
+    if(selected.length===0){setNewCustData(null);setPrevNewCustData(null);return;}
+    Promise.all(selected.map(p=>fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year).then(r=>r.json()).catch(()=>null)))
+      .then(results=>{
+        const merged={counts:{}};
+        for(const d of results){if(!d||!d.counts)continue;for(const[k,v]of Object.entries(d.counts))merged.counts[k]=(merged.counts[k]||0)+v;}
+        setNewCustData(merged);
+      });
+    if(prevWindow.length>0){
+      Promise.all(prevWindow.map(p=>fetch(SHEETS_API+"?action=newcustomer&month="+p.month+"&year="+p.year).then(r=>r.json()).catch(()=>null)))
+        .then(results=>{
+          const merged={counts:{}};
+          for(const d of results){if(!d||!d.counts)continue;for(const[k,v]of Object.entries(d.counts))merged.counts[k]=(merged.counts[k]||0)+v;}
+          setPrevNewCustData(merged);
+        });
     }else{setPrevNewCustData(null);}
-  },[p,prev]);
+  // eslint-disable-next-line
+  },[sps.join(",")]);
 
   const ncCounts=newCustData?.counts||{};
   const pncCounts=prevNewCustData?.counts||{};
 
   const rows=locations.map(loc=>{
-    const cur=p?aggSales(filterPeriod(data,p).filter(r=>r.location===loc)):{salesEngaged:0,salesShoppers:0,salesLeads:0,salesInfluenced:0,salesWinback:0,salesGross:0,salesWinbackProfit:0,salesROI:0,winbackSalesPct:0,monthlyCost:0};
-    const prv=prev?aggSales(filterPeriod(data,prev).filter(r=>r.location===loc)):null;
-    // Match dealership name to sheet tab name (sheet tabs may not exactly match location names)
-    // Try exact match first, then partial
+    const cur=selected.length>0?aggSales(filterMulti(data,selected).filter(r=>r.location===loc)):{salesEngaged:0,salesShoppers:0,salesLeads:0,salesInfluenced:0,salesWinback:0,salesGross:0,salesWinbackProfit:0,salesROI:0,winbackSalesPct:0,monthlyCost:0};
+    const prv=prevWindow.length>0?aggSales(filterMulti(data,prevWindow).filter(r=>r.location===loc)):null;
     let nc=ncCounts[loc]??null;
     if(nc===null){const lcLoc=loc.toLowerCase();const match=Object.keys(ncCounts).find(k=>k.toLowerCase()===lcLoc||lcLoc.includes(k.toLowerCase())||k.toLowerCase().includes(lcLoc));if(match)nc=ncCounts[match];}
     let pnc=Object.keys(pncCounts).length>0?(pncCounts[loc]??null):null;
@@ -357,7 +439,7 @@ function DealerSalesTab({data,periods,sp,setSp,locations}){
   return(<div>
     <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
-      <select value={sp} onChange={e=>setSp(e.target.value)} style={selStyle}>{periods.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select>
+      <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
     </div>
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
@@ -416,11 +498,13 @@ function DealerSalesTab({data,periods,sp,setSp,locations}){
   </div>);
 }
 
-function DealerServiceTab({data,periods,sp,setSp,locations}){
+function DealerServiceTab({data,periods,sps,setSps,locations}){
   const{sortState,onSort,doSort}=useSort("serviceROs","desc");
-  const p=periods.find(pp=>pp.key===sp);const prev=getPrev(periods,sp);
+  const selected=getSelected(periods,sps);
+  const prevWindow=getPrevWindow(periods,selected);
   const rows=locations.map(loc=>{
-    const pRows=p?filterPeriod(data,p).filter(r=>r.location===loc):[];const prRows=prev?filterPeriod(data,prev).filter(r=>r.location===loc):[];
+    const pRows=selected.length>0?filterMulti(data,selected).filter(r=>r.location===loc):[];
+    const prRows=prevWindow.length>0?filterMulti(data,prevWindow).filter(r=>r.location===loc):[];
     const svc=aggService(pRows);const prvSvc=prRows.length?aggService(prRows):null;
     return{location:loc,...svc,prevROs:prvSvc?.serviceROs??null,prevWinbackROs:prvSvc?.serviceWinbackROs??null};
   });
@@ -435,7 +519,7 @@ function DealerServiceTab({data,periods,sp,setSp,locations}){
   return(<div>
     <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
       <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
-      <select value={sp} onChange={e=>setSp(e.target.value)} style={selStyle}>{periods.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select>
+      <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
     </div>
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
@@ -628,7 +712,7 @@ async function captureTab(ref,opts={}){return html2canvas(ref,{backgroundColor:o
 
 export default function App(){
   const[data,setData]=useState([]);const[loading,setLoading]=useState(true);const[error,setError]=useState("");
-  const[activeTab,setActiveTab]=useState("groupSales");const[sp,setSp]=useState("");
+  const[activeTab,setActiveTab]=useState("groupSales");const[sps,setSps]=useState([]);
   const[sheetTabs,setSheetTabs]=useState([]);const[refreshing,setRefreshing]=useState(false);
   const[downloading,setDownloading]=useState(false);const[dlProgress,setDlProgress]=useState("");
   const[captureMode,setCaptureMode]=useState(false);const[captureLoc,setCaptureLoc]=useState("");
@@ -641,7 +725,7 @@ export default function App(){
       const text=await resp.text();const parsed=parseOverallCSV(text);
       if(parsed.length===0)throw new Error("No valid data rows found.");
       setData(parsed);const periods=getPeriods(parsed);
-      if(periods.length>0)setSp(prev=>prev&&periods.find(p=>p.key===prev)?prev:periods[periods.length-1].key);
+      if(periods.length>0)setSps(prev=>{const valid=prev.filter(k=>periods.find(p=>p.key===k));return valid.length>0?valid:[periods[periods.length-1].key];});
     }catch(e){setError(e.message);}
     setLoading(false);setRefreshing(false);
   },[]);
@@ -668,14 +752,16 @@ export default function App(){
 
   const downloadJPG=async()=>{if(!contentRef.current||downloading)return;setDownloading(true);
     try{const canvas=await captureTab(contentRef.current);const link=document.createElement("a");
-      link.download=`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${sp}.jpg`;
+      const tag=sps.length===1?sps[0]:sps.length>1?`${sps[0]}_to_${sps[sps.length-1]}`:"";
+      link.download=`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${tag}.jpg`;
       link.href=canvas.toDataURL("image/jpeg",0.95);link.click();}catch(e){alert("Export failed: "+e.message);}
     setDownloading(false);};
   const downloadPDF=async()=>{if(!contentRef.current||downloading)return;setDownloading(true);
     try{const canvas=await captureTab(contentRef.current);const imgData=canvas.toDataURL("image/jpeg",0.92);
       const pdf=new jsPDF({orientation:canvas.width>canvas.height?"landscape":"portrait",unit:"px",format:[canvas.width,canvas.height]});
       pdf.addImage(imgData,"JPEG",0,0,canvas.width,canvas.height);
-      pdf.save(`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${sp}.pdf`);}catch(e){alert("Export failed: "+e.message);}
+      const tag=sps.length===1?sps[0]:sps.length>1?`${sps[0]}_to_${sps[sps.length-1]}`:"";
+      pdf.save(`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${tag}.pdf`);}catch(e){alert("Export failed: "+e.message);}
     setDownloading(false);};
   const downloadAll=async()=>{if(downloading)return;
     const pwd=window.prompt("Enter password to publish screenshots:");
@@ -772,11 +858,11 @@ export default function App(){
     </div>
 
     <div ref={contentRef} style={{padding:captureMode?"24px 28px 20px":"24px 36px 48px",maxWidth:captureMode?1200:undefined}}>
-      {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
-      {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
-      {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
-      {activeTab==="dealerSales"&&<DealerSalesTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
-      {activeTab==="dealerService"&&<DealerServiceTab data={data} periods={periods} sp={sp} setSp={setSp} locations={locations}/>}
+      {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
+      {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
+      {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
+      {activeTab==="dealerSales"&&<DealerSalesTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations}/>}
+      {activeTab==="dealerService"&&<DealerServiceTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations}/>}
       {activeTab==="customerData"&&(custUnlocked?<CustomerDataTab sheetTabs={sheetTabs} locations={locations}/>:(
         <div style={{display:"flex",justifyContent:"center",paddingTop:60}}>
           <div style={{background:"white",borderRadius:14,padding:"40px 48px",boxShadow:"0 2px 12px rgba(0,0,0,0.08)",textAlign:"center",maxWidth:400,width:"100%"}}>
