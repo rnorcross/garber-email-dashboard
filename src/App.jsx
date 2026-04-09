@@ -677,7 +677,11 @@ export default function App(){
       pdf.addImage(imgData,"JPEG",0,0,canvas.width,canvas.height);
       pdf.save(`Garber_Fullpath_${TABS.find(t=>t.id===activeTab)?.label.replace(/\s+/g,"_")}_${sp}.pdf`);}catch(e){alert("Export failed: "+e.message);}
     setDownloading(false);};
-  const downloadAll=async()=>{if(downloading)return;setDownloading(true);setCaptureMode(true);
+  const downloadAll=async()=>{if(downloading)return;
+    const pwd=window.prompt("Enter password to publish screenshots:");
+    if(pwd===null)return;
+    if(pwd!=="garber1907"){alert("Incorrect password.");return;}
+    setDownloading(true);setCaptureMode(true);
     try{const origTab=activeTab;
       const captureTabs=[
         {id:"groupSales",label:"Sales_Email",locs:locations},
