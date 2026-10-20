@@ -8,7 +8,7 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTYVu1c2A
 const SHEETS_API = "/api/sheets";
 const MN=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTH_MAP={January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12,Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
-const C={main:"#072a60",sec:"#0d6eff",acc1:"#1e88e5",green:"#0a8754",amber:"#c9710d",red:"#c0392b",bg:"#edf1f7",purple:"#7c3aed",teal:"#0d9488"};
+const C={main:"#11132a",sec:"#1122d7",acc1:"#4253d2",green:"#0a8754",amber:"#c9710d",red:"#c0392b",bg:"#f2f3f8",surface:"#ffffff",muted:"#585c78",faint:"#8a8ea8",line:"#e0e2ee",soft:"#eceef7",accentSoft:"#e3e7fd",purple:"#7c3aed",teal:"#0d9488",shadow:"0 1px 2px rgba(17,19,42,.05),0 8px 24px -12px rgba(17,19,42,.14)"};
 const LOC_NORMALIZE={"Volvo Cars Rochester":"Volvo Cars of Rochester","Garber Chevrolet Webster":"Parker Chevrolet Webster"};
 const TABS=[
   {id:"groupSales",label:"Sales Email Marketing",icon:"\ud83d\udcca"},
@@ -74,14 +74,14 @@ function aggService(rows){const o={serviceShoppers:0,serviceLeads:0,serviceROs:0
 function aggGoogle(rows){const o={clicksGoogle:0,pageViewsGoogle:0,leadsGoogle:0,phoneCallsGoogle:0,spendGoogle:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});return o;}
 function aggFB(rows){const o={clicksFB:0,pageViewsFB:0,leadsFB:0,phoneCallsFB:0,spendFB:0};rows.forEach(r=>{for(const k in o)o[k]+=r[k];});return o;}
 
-const Badge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:"#99AAAA"}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{typeof cur==="number"&&cur%1!==0?d.toFixed(1):d.toLocaleString()} <span style={{fontWeight:600,fontSize:12,color:"#99AAAA"}}>vs PM</span></span>;};
-const MoneyBadge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:"#9aa",fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:"#8896a4",fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:"#99AAAA"}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{fmtMoney(d)} <span style={{fontWeight:600,fontSize:12,color:"#99AAAA"}}>vs PM</span></span>;};
+const Badge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:C.faint,fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:C.muted,fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:C.faint}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{typeof cur==="number"&&cur%1!==0?d.toFixed(1):d.toLocaleString()} <span style={{fontWeight:600,fontSize:12,color:C.faint}}>vs PM</span></span>;};
+const MoneyBadge=({cur,prev})=>{if(prev===null||prev===undefined)return<span style={{color:C.faint,fontSize:14}}>{"\u2014"}</span>;const d=cur-prev;if(d===0)return<span style={{color:C.muted,fontSize:14,fontWeight:600}}>{"\u2014"} <span style={{color:C.faint}}>vs PM</span></span>;const up=d>0;return<span style={{fontSize:14,fontWeight:700,color:up?C.green:C.red,whiteSpace:"nowrap"}}>{up?"\u25B2":"\u25BC"} {up?"+":""}{fmtMoney(d)} <span style={{fontWeight:600,fontSize:12,color:C.faint}}>vs PM</span></span>;};
 
 const InfoTip=({text})=>{
   const[show,setShow]=useState(false);
   return(<span style={{position:"relative",display:"inline-flex",marginLeft:6,cursor:"help",verticalAlign:"middle"}} onMouseEnter={()=>setShow(true)} onMouseLeave={()=>setShow(false)}>
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.5" stroke="#b0bec5" strokeWidth="1"/><text x="8" y="12" textAnchor="middle" fontSize="10" fontWeight="700" fill="#b0bec5" fontFamily="Arial">i</text></svg>
-    {show&&<div style={{position:"absolute",bottom:"calc(100% + 8px)",left:"50%",transform:"translateX(-50%)",background:"#1e293b",color:"white",fontSize:12,lineHeight:1.5,fontWeight:400,padding:"10px 14px",borderRadius:8,width:260,textTransform:"none",letterSpacing:0,zIndex:100,boxShadow:"0 4px 16px rgba(0,0,0,0.2)",pointerEvents:"none"}}>
+    {show&&<div style={{position:"absolute",bottom:"calc(100% + 8px)",left:"50%",transform:"translateX(-50%)",background:C.main,color:"white",fontSize:12,lineHeight:1.5,fontWeight:400,padding:"10px 14px",borderRadius:10,width:260,textTransform:"none",letterSpacing:0,zIndex:100,boxShadow:C.shadow,pointerEvents:"none"}}>
       {text}
       <div style={{position:"absolute",top:"100%",left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"6px solid #1e293b"}}/>
     </div>}
@@ -89,33 +89,33 @@ const InfoTip=({text})=>{
 };
 
 const KPI=({label,value,fmt="num",color=C.main,sub,tip})=>(
-  <div style={{background:"white",borderRadius:14,padding:"22px 24px",minWidth:150,flex:1,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderTop:`4px solid ${color}`}}>
-    <div style={{fontSize:12,color:"#7a8a9a",fontWeight:600,textTransform:"uppercase",letterSpacing:1.1,marginBottom:6}}>{label}{tip&&<InfoTip text={tip}/>}</div>
-    <div style={{fontSize:32,fontWeight:800,color,lineHeight:1.1}}>{fmt==="money"?fmtMoney(value):fmt==="pct"?fmtPct(value):fmtNum(value)}</div>
-    {sub&&<div style={{fontSize:13,color:"#7a8a9a",marginTop:6}}>{sub}</div>}
+  <div style={{background:C.surface,borderRadius:16,padding:"22px 24px",minWidth:150,flex:1,boxShadow:C.shadow,border:`1px solid ${C.line}`}}>
+    <div style={{fontSize:11.5,color:C.faint,fontWeight:650,textTransform:"uppercase",letterSpacing:1.1,marginBottom:6}}>{label}{tip&&<InfoTip text={tip}/>}</div>
+    <div style={{fontSize:30,fontWeight:800,fontStretch:"84%",color,lineHeight:1.1}}>{fmt==="money"?fmtMoney(value):fmt==="pct"?fmtPct(value):fmtNum(value)}</div>
+    {sub&&<div style={{fontSize:13,color:C.faint,marginTop:6}}>{sub}</div>}
   </div>
 );
 
 const SortHeader=({label,sortKey,sortState,onSort,align="right",first,last})=>(
-  <th onClick={()=>onSort(sortKey)} style={{padding:"11px 12px",fontWeight:700,fontSize:13,textAlign:align,cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",background:C.main,color:"white",borderRadius:first?"10px 0 0 0":last?"0 10px 0 0":undefined,position:"sticky",top:0,zIndex:2}}>
+  <th onClick={()=>onSort(sortKey)} style={{padding:"11px 12px",fontWeight:700,fontSize:13,textAlign:align,cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",background:C.main,color:"white",borderRadius:first?"12px 0 0 0":last?"0 12px 0 0":undefined,position:"sticky",top:0,zIndex:2}}>
     {label}{sortState.key===sortKey?(sortState.dir==="asc"?" \u2191":" \u2193"):""}
   </th>
 );
 
 function useSort(defaultKey,defaultDir="desc"){const[s,setS]=useState({key:defaultKey,dir:defaultDir});const onSort=useCallback(key=>setS(prev=>prev.key===key?{key,dir:prev.dir==="desc"?"asc":"desc"}:{key,dir:"desc"}),[]);const doSort=useCallback(arr=>[...arr].sort((a,b)=>{const av=a[s.key]??0,bv=b[s.key]??0;if(typeof av==="string")return s.dir==="asc"?av.localeCompare(bv):bv.localeCompare(av);return s.dir==="asc"?av-bv:bv-av;}),[s]);return{sortState:s,onSort,doSort};}
 
-const selStyle={padding:"9px 16px",borderRadius:10,border:`2px solid ${C.sec}`,fontSize:14,fontWeight:700,color:C.main,background:"white",cursor:"pointer",outline:"none"};
+const selStyle={padding:"9px 16px",borderRadius:999,border:`1px solid ${C.line}`,fontSize:14,fontWeight:600,color:C.main,background:C.surface,cursor:"pointer",outline:"none"};
 
 const TrendChart=({data,periods,valueKey,label,color,fmt="num",aggFn,filterLoc})=>{
   const cd=periods.map(p=>{let rows=filterPeriod(data,p);if(filterLoc)rows=rows.filter(r=>r.location===filterLoc);const a=aggFn(rows);return{name:p.short,value:a[valueKey]||0};});
   return(
-    <div style={{background:"white",borderRadius:14,padding:"20px 22px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",flex:1,minWidth:340}}>
+    <div style={{background:C.surface,borderRadius:16,padding:"20px 22px",boxShadow:C.shadow,border:`1px solid ${C.line}`,flex:1,minWidth:340}}>
       <div style={{fontSize:15,fontWeight:700,color:C.main,marginBottom:12}}>{label}</div>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={cd} margin={{top:5,right:20,bottom:5,left:10}}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e8ecf0"/>
+          <CartesianGrid strokeDasharray="3 3" stroke={C.line}/>
           <XAxis dataKey="name" tick={{fontSize:11,fill:C.main,fontWeight:600}} interval={0} angle={periods.length>8?-30:0} textAnchor={periods.length>8?"end":"middle"} height={periods.length>8?50:30}/>
-          <YAxis tick={{fontSize:11,fill:"#8896a4"}} tickFormatter={v=>fmt==="money"?fmtMoney(v):fmt==="pct"?`${v.toFixed(0)}%`:v>=1000?`${(v/1000).toFixed(1)}k`:v} width={60}/>
+          <YAxis tick={{fontSize:11,fill:C.faint}} tickFormatter={v=>fmt==="money"?fmtMoney(v):fmt==="pct"?`${v.toFixed(0)}%`:v>=1000?`${(v/1000).toFixed(1)}k`:v} width={60}/>
           <Tooltip formatter={v=>fmt==="money"?fmtMoney(Number(v)):fmt==="pct"?fmtPct(Number(v)):Number(v).toLocaleString()} contentStyle={{borderRadius:10,border:`1px solid ${C.sec}`,fontSize:13}}/>
           <Line type="monotone" dataKey="value" stroke={color} strokeWidth={3} dot={{r:4,fill:color,stroke:"white",strokeWidth:2}} activeDot={{r:6}}/>
         </LineChart>
@@ -124,7 +124,7 @@ const TrendChart=({data,periods,valueKey,label,color,fmt="num",aggFn,filterLoc})
   );
 };
 
-const Section=({title,desc,children})=>(<div style={{background:"white",borderRadius:14,padding:24,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",marginBottom:20}}><div style={{fontSize:17,fontWeight:700,marginBottom:4,color:C.main}}>{title}</div>{desc&&<div style={{fontSize:13,color:"#7a8a9a",marginBottom:16}}>{desc}</div>}{children}</div>);
+const Section=({title,desc,children})=>(<div style={{background:C.surface,borderRadius:16,padding:24,boxShadow:C.shadow,border:`1px solid ${C.line}`,marginBottom:20}}><div style={{fontSize:11.5,fontWeight:650,textTransform:"uppercase",letterSpacing:1.1,color:C.sec,marginBottom:2}}>{title}</div>{desc&&<div style={{fontSize:13,color:C.faint,marginBottom:16}}>{desc}</div>}{children}</div>);
 
 const PeriodMultiSelect=({periods,sps,setSps})=>{
   const[open,setOpen]=useState(false);
@@ -149,15 +149,15 @@ const PeriodMultiSelect=({periods,sps,setSps})=>{
       <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
       <span style={{fontSize:10,opacity:0.5}}>{"\u25BC"}</span>
     </button>
-    {open&&(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:100,background:"#fff",border:"1px solid #d0dae5",borderRadius:8,boxShadow:"0 6px 24px rgba(7,42,96,0.18)",minWidth:260,maxHeight:380,overflowY:"auto"}}>
-      <div style={{padding:"8px 10px",borderBottom:"1px solid #eef2f7",display:"flex",gap:6,flexWrap:"wrap"}}>
+    {open&&(<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:100,background:C.surface,border:`1px solid ${C.line}`,borderRadius:12,boxShadow:C.shadow,minWidth:260,maxHeight:380,overflowY:"auto"}}>
+      <div style={{padding:"8px 10px",borderBottom:`1px solid ${C.soft}`,display:"flex",gap:6,flexWrap:"wrap"}}>
         <button onClick={selectLatest} style={presetBtn}>Latest</button>
         <button onClick={selectLast3} style={presetBtn}>Last 3</button>
         <button onClick={selectLast6} style={presetBtn}>Last 6</button>
         <button onClick={selectLast12} style={presetBtn}>Last 12</button>
       </div>
       {[...periods].reverse().map(p=>(
-        <label key={p.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",fontSize:14,borderBottom:"1px solid #f5f7fa"}}>
+        <label key={p.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",fontSize:14,borderBottom:`1px solid ${C.soft}`}}>
           <input type="checkbox" checked={sps.includes(p.key)} onChange={()=>toggle(p.key)} style={{cursor:"pointer"}}/>
           <span>{p.label}</span>
         </label>
@@ -165,13 +165,13 @@ const PeriodMultiSelect=({periods,sps,setSps})=>{
     </div>)}
   </div>);
 };
-const presetBtn={padding:"4px 10px",fontSize:12,fontWeight:600,background:"#f5f7fa",border:"1px solid #d0dae5",borderRadius:6,cursor:"pointer",color:"#072a60"};
+const presetBtn={padding:"4px 10px",fontSize:12,fontWeight:600,background:C.soft,border:`1px solid ${C.line}`,borderRadius:999,cursor:"pointer",color:C.main};
 
 const FilterBar=({periods,sps,setSps,locations,selectedLoc,setSelectedLoc})=>(
   <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
-    <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
+    <span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1}}>PERIOD:</span>
     <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
-    {locations&&(<><span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>DEALERSHIP:</span>
+    {locations&&(<><span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1,marginLeft:12}}>DEALERSHIP:</span>
       <select value={selectedLoc} onChange={e=>setSelectedLoc(e.target.value)} style={{...selStyle,maxWidth:340}}><option value="">All Dealerships</option>{locations.map(l=><option key={l} value={l}>{l}</option>)}</select></>)}
   </div>
 );
@@ -266,8 +266,8 @@ function GroupSalesTab({data,periods,sps,setSps,locations,captureMode,captureLoc
       <KPI label="New Customer Sales" value={newCustCount} color={C.teal} sub={prevNewCustCount!==null?<Badge cur={newCustCount} prev={prevNewCustCount}/>:null} tip="The number of sales from customers who never purchased a car from our dealership before."/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
-      <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>} tip="Percentage of new cars sold from the sales influenced number."/>
-      <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:"#7a8a9a"}}>of influenced sales</span>} tip="Percentage of used cars sold from the sales influenced number."/>
+      <KPI label="New % Sold" value={newPct} fmt="pct" color={C.sec} sub={<span style={{fontSize:12,color:C.faint}}>of influenced sales</span>} tip="Percentage of new cars sold from the sales influenced number."/>
+      <KPI label="Used % Sold" value={usedPct} fmt="pct" color={C.amber} sub={<span style={{fontSize:12,color:C.faint}}>of influenced sales</span>} tip="Percentage of used cars sold from the sales influenced number."/>
     </div>
     {!captureMode&&<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
       <TrendChart data={filt} periods={last12} valueKey="salesShoppers" label="Sales Shoppers" color={C.acc1} aggFn={aggSales} filterLoc={loc}/>
@@ -339,9 +339,9 @@ function GroupAdsTab({data,periods,sps,setSps,locations,captureMode,captureLoc})
   const hasF=fCur.clicksFB>0||fCur.leadsFB>0||fCur.spendFB>0||fCur.pageViewsFB>0||fCur.phoneCallsFB>0;
   return(<div>
     {!captureMode&&<div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
-      <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
+      <span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1}}>PERIOD:</span>
       <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
-      <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>DEALERSHIP:</span>
+      <span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1,marginLeft:12}}>DEALERSHIP:</span>
       <select value={loc} onChange={e=>setInternalLoc(e.target.value)} style={{...selStyle,maxWidth:340}}>
         <option value="">All Dealerships</option>
         {locations.map(l=><option key={l} value={l} disabled={!locsWithAdData.has(l)} style={{color:locsWithAdData.has(l)?C.main:"#ccc"}}>{l}{locsWithAdData.has(l)?"":" (no data)"}</option>)}
@@ -434,17 +434,17 @@ function DealerSalesTab({data,periods,sps,setSps,locations}){
   const activeRows=rows.filter(r=>r.salesInfluenced>0||r.salesEngaged>0);
   const avgROI=activeRows.length>0?(activeRows.reduce((a,r)=>a+r.salesROI,0)/activeRows.length):0;
   const avgWbPct=activeRows.length>0?(activeRows.reduce((a,r)=>a+r.winbackSalesPct,0)/activeRows.length):0;
-  const td=i=>({padding:"10px 12px",fontSize:13,background:i%2===0?"#f4f7fc":"white"});
-  const ts={padding:"11px 12px",fontSize:13,fontWeight:800,background:"#e8edf5",borderTop:`2px solid ${C.main}`};
+  const td=i=>({padding:"10px 12px",fontSize:13,background:i%2===0?C.soft:C.surface});
+  const ts={padding:"11px 12px",fontSize:13,fontWeight:800,background:C.accentSoft,borderTop:`2px solid ${C.main}`};
   return(<div>
     <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
-      <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
+      <span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1}}>PERIOD:</span>
       <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
     </div>
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
         <thead><tr>
-          <th style={{padding:"11px 12px",fontWeight:700,fontSize:13,textAlign:"left",background:C.main,color:"white",borderRadius:"10px 0 0 0"}}>#</th>
+          <th style={{padding:"11px 12px",fontWeight:700,fontSize:13,textAlign:"left",background:C.main,color:"white",borderRadius:"12px 0 0 0"}}>#</th>
           <SortHeader label="Dealership" sortKey="location" sortState={sortState} onSort={onSort} align="left"/>
           <SortHeader label="Engaged" sortKey="salesEngaged" sortState={sortState} onSort={onSort}/>
           <SortHeader label="Shoppers" sortKey="salesShoppers" sortState={sortState} onSort={onSort}/>
@@ -460,8 +460,8 @@ function DealerSalesTab({data,periods,sps,setSps,locations}){
           <SortHeader label="WB %" sortKey="winbackSalesPct" sortState={sortState} onSort={onSort} last/>
         </tr></thead>
         <tbody>
-          {sorted.map((r,i)=>(<tr key={r.location} onMouseEnter={e=>e.currentTarget.style.background="#e4edff"} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#f4f7fc":"white"}>
-            <td style={{...td(i),fontWeight:800,color:i<3?C.sec:"#8896a4"}}>{i+1}</td>
+          {sorted.map((r,i)=>(<tr key={r.location} onMouseEnter={e=>e.currentTarget.style.background=C.accentSoft} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?C.soft:C.surface}>
+            <td style={{...td(i),fontWeight:800,color:i<3?C.sec:C.faint}}>{i+1}</td>
             <td style={{...td(i),fontWeight:600,color:C.main,maxWidth:240,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.location}</td>
             <td style={{...td(i),textAlign:"right"}}>{fmtNum(r.salesEngaged)}</td>
             <td style={{...td(i),textAlign:"right"}}>{fmtNum(r.salesShoppers)}</td>
@@ -473,11 +473,11 @@ function DealerSalesTab({data,periods,sps,setSps,locations}){
             <td style={{...td(i),textAlign:"right",color:C.teal,fontWeight:700}}>{fmtNum(r.newCust)}</td>
             <td style={{...td(i),textAlign:"right"}}><Badge cur={r.newCust} prev={r.prevNewCust}/></td>
             <td style={{...td(i),textAlign:"right",fontWeight:600}}>{fmtMoney(r.salesGross)}</td>
-            <td style={{...td(i),textAlign:"right"}}><span style={{background:r.salesROI>=200?"#d4edda":r.salesROI>=100?"#fff3cd":"#f8d7da",color:r.salesROI>=200?"#155724":r.salesROI>=100?"#856404":"#721c24",padding:"3px 10px",borderRadius:20,fontWeight:700,fontSize:12}}>{fmtPct(r.salesROI)}</span></td>
+            <td style={{...td(i),textAlign:"right"}}><span style={{background:r.salesROI>=200?"#d4edda":r.salesROI>=100?"#fff3cd":"#f8d7da",color:r.salesROI>=200?"#155724":r.salesROI>=100?"#856404":"#721c24",padding:"3px 10px",borderRadius:999,fontWeight:700,fontSize:12}}>{fmtPct(r.salesROI)}</span></td>
             <td style={{...td(i),textAlign:"right"}}>{fmtPct(r.winbackSalesPct)}</td>
           </tr>))}
           <tr>
-            <td style={{...ts,borderRadius:"0 0 0 10px"}}></td>
+            <td style={{...ts,borderRadius:"0 0 0 12px"}}></td>
             <td style={{...ts,textAlign:"left",color:C.main,fontSize:14}}>GROUP TOTALS</td>
             <td style={{...ts,textAlign:"right"}}>{fmtNum(tot.salesEngaged)}</td>
             <td style={{...ts,textAlign:"right"}}>{fmtNum(tot.salesShoppers)}</td>
@@ -489,8 +489,8 @@ function DealerSalesTab({data,periods,sps,setSps,locations}){
             <td style={{...ts,textAlign:"right",color:C.teal}}>{fmtNum(tot.newCust)}</td>
             <td style={{...ts,textAlign:"right"}}><Badge cur={tot.newCust} prev={totPrevNC}/></td>
             <td style={{...ts,textAlign:"right"}}>{fmtMoney(tot.salesGross)}</td>
-            <td style={{...ts,textAlign:"right"}}><span style={{background:avgROI>=200?"#d4edda":avgROI>=100?"#fff3cd":"#f8d7da",color:avgROI>=200?"#155724":avgROI>=100?"#856404":"#721c24",padding:"3px 10px",borderRadius:20,fontWeight:800,fontSize:13}}>{fmtPct(avgROI)}</span></td>
-            <td style={{...ts,textAlign:"right",borderRadius:"0 0 10px 0"}}>{fmtPct(avgWbPct)}</td>
+            <td style={{...ts,textAlign:"right"}}><span style={{background:avgROI>=200?"#d4edda":avgROI>=100?"#fff3cd":"#f8d7da",color:avgROI>=200?"#155724":avgROI>=100?"#856404":"#721c24",padding:"3px 10px",borderRadius:999,fontWeight:800,fontSize:13}}>{fmtPct(avgROI)}</span></td>
+            <td style={{...ts,textAlign:"right",borderRadius:"0 0 12px 0"}}>{fmtPct(avgWbPct)}</td>
           </tr>
         </tbody>
       </table>
@@ -514,17 +514,17 @@ function DealerServiceTab({data,periods,sps,setSps,locations}){
   const totWbPct=tot.serviceROs>0?((tot.serviceWinbackROs/tot.serviceROs)*100):0;
   const totPrevROs=rows.every(r=>r.prevROs===null)?null:rows.reduce((a,r)=>a+(r.prevROs??0),0);
   const totPrevWbROs=rows.every(r=>r.prevWinbackROs===null)?null:rows.reduce((a,r)=>a+(r.prevWinbackROs??0),0);
-  const td=i=>({padding:"10px 12px",fontSize:13,background:i%2===0?"#f4f7fc":"white"});
-  const ts={padding:"11px 12px",fontSize:13,fontWeight:800,background:"#e8edf5",borderTop:`2px solid ${C.main}`};
+  const td=i=>({padding:"10px 12px",fontSize:13,background:i%2===0?C.soft:C.surface});
+  const ts={padding:"11px 12px",fontSize:13,fontWeight:800,background:C.accentSoft,borderTop:`2px solid ${C.main}`};
   return(<div>
     <div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
-      <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>PERIOD:</span>
+      <span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1}}>PERIOD:</span>
       <PeriodMultiSelect periods={periods} sps={sps} setSps={setSps}/>
     </div>
     <div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
         <thead><tr>
-          <th style={{padding:"11px 12px",fontWeight:700,fontSize:13,textAlign:"left",background:C.main,color:"white",borderRadius:"10px 0 0 0"}}>#</th>
+          <th style={{padding:"11px 12px",fontWeight:700,fontSize:13,textAlign:"left",background:C.main,color:"white",borderRadius:"12px 0 0 0"}}>#</th>
           <SortHeader label="Dealership" sortKey="location" sortState={sortState} onSort={onSort} align="left"/>
           <SortHeader label="Shoppers" sortKey="serviceShoppers" sortState={sortState} onSort={onSort}/>
           <SortHeader label="Svc Leads" sortKey="serviceLeads" sortState={sortState} onSort={onSort}/>
@@ -537,8 +537,8 @@ function DealerServiceTab({data,periods,sps,setSps,locations}){
           <SortHeader label="WB %" sortKey="winbackServicePct" sortState={sortState} onSort={onSort} last/>
         </tr></thead>
         <tbody>
-          {sorted.map((r,i)=>(<tr key={r.location} onMouseEnter={e=>e.currentTarget.style.background="#e4edff"} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#f4f7fc":"white"}>
-            <td style={{...td(i),fontWeight:800,color:i<3?C.sec:"#8896a4"}}>{i+1}</td>
+          {sorted.map((r,i)=>(<tr key={r.location} onMouseEnter={e=>e.currentTarget.style.background=C.accentSoft} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?C.soft:C.surface}>
+            <td style={{...td(i),fontWeight:800,color:i<3?C.sec:C.faint}}>{i+1}</td>
             <td style={{...td(i),fontWeight:600,color:C.main,maxWidth:220,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.location}</td>
             <td style={{...td(i),textAlign:"right"}}>{fmtNum(r.serviceShoppers)}</td>
             <td style={{...td(i),textAlign:"right"}}>{fmtNum(r.serviceLeads)}</td>
@@ -551,7 +551,7 @@ function DealerServiceTab({data,periods,sps,setSps,locations}){
             <td style={{...td(i),textAlign:"right"}}>{fmtPct(r.winbackServicePct)}</td>
           </tr>))}
           <tr>
-            <td style={{...ts,borderRadius:"0 0 0 10px"}}></td>
+            <td style={{...ts,borderRadius:"0 0 0 12px"}}></td>
             <td style={{...ts,textAlign:"left",color:C.main,fontSize:14}}>GROUP TOTALS</td>
             <td style={{...ts,textAlign:"right"}}>{fmtNum(tot.serviceShoppers)}</td>
             <td style={{...ts,textAlign:"right"}}>{fmtNum(tot.serviceLeads)}</td>
@@ -561,7 +561,7 @@ function DealerServiceTab({data,periods,sps,setSps,locations}){
             <td style={{...ts,textAlign:"right"}}><Badge cur={tot.serviceWinbackROs} prev={totPrevWbROs}/></td>
             <td style={{...ts,textAlign:"right"}}>{fmtMoney(tot.roValue)}</td>
             <td style={{...ts,textAlign:"right",color:C.purple}}>{fmtMoney(tot.serviceWinbackROValue)}</td>
-            <td style={{...ts,textAlign:"right",borderRadius:"0 0 10px 0"}}><span style={{background:totWbPct>=30?"#d4edda":totWbPct>=15?"#fff3cd":"#f8d7da",color:totWbPct>=30?"#155724":totWbPct>=15?"#856404":"#721c24",padding:"3px 10px",borderRadius:20,fontWeight:800,fontSize:13}}>{fmtPct(totWbPct)}</span></td>
+            <td style={{...ts,textAlign:"right",borderRadius:"0 0 12px 0"}}><span style={{background:totWbPct>=30?"#d4edda":totWbPct>=15?"#fff3cd":"#f8d7da",color:totWbPct>=30?"#155724":totWbPct>=15?"#856404":"#721c24",padding:"3px 10px",borderRadius:999,fontWeight:800,fontSize:13}}>{fmtPct(totWbPct)}</span></td>
           </tr>
         </tbody>
       </table>
@@ -648,40 +648,40 @@ function CustomerDataTab({sheetTabs,locations}){
 
   return(<div>
     {validTabs.length>0&&(<div style={{padding:"16px 0",display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:16}}>
-      <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a"}}>DEALERSHIP:</span>
+      <span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1}}>DEALERSHIP:</span>
       <select value={selectedTab} onChange={e=>setSelectedTab(e.target.value)} style={{...selStyle,maxWidth:400}}>
         <option value="">{"\u2014"} Select Dealership {"\u2014"}</option>
         {validTabs.map(t=><option key={t.sheetId} value={t.name}>{t.name}</option>)}
       </select>
       {monthOptions.length>0&&(<>
-        <span style={{fontSize:14,fontWeight:700,color:"#7a8a9a",marginLeft:12}}>MONTH:</span>
+        <span style={{fontSize:12,fontWeight:650,color:C.faint,textTransform:"uppercase",letterSpacing:1,marginLeft:12}}>MONTH:</span>
         <select value={monthFilter} onChange={e=>setMonthFilter(e.target.value)} style={selStyle}>
           <option value="">All Months</option>
           {monthOptions.map(o=><option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
       </>)}
-      <span style={{fontSize:13,color:"#7a8a9a"}}>Customer-specific data from email marketing for <strong>Sales</strong></span>
+      <span style={{fontSize:13,color:C.faint}}>Customer-specific data from email marketing for <strong>Sales</strong></span>
     </div>)}
 
-    {apiFailed&&!loading&&!custData&&(<div style={{background:"white",borderRadius:14,padding:32,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",maxWidth:700,margin:"20px auto",textAlign:"left"}}>
+    {apiFailed&&!loading&&!custData&&(<div style={{background:C.surface,borderRadius:16,padding:32,boxShadow:C.shadow,border:`1px solid ${C.line}`,maxWidth:700,margin:"20px auto",textAlign:"left"}}>
       <div style={{fontSize:20,fontWeight:800,color:C.main,marginBottom:16}}>{"\u26A0\uFE0F"} API Setup Required</div>
-      <p style={{fontSize:14,color:"#555",lineHeight:1.7,marginBottom:16}}>The Customer Data tab needs two environment variables set in your Vercel project settings. Check the deployment guide for step-by-step instructions:</p>
-      <div style={{background:"#f0f4ff",borderRadius:10,padding:20,marginBottom:12}}>
+      <p style={{fontSize:14,color:C.muted,lineHeight:1.7,marginBottom:16}}>The Customer Data tab needs two environment variables set in your Vercel project settings. Check the deployment guide for step-by-step instructions:</p>
+      <div style={{background:C.accentSoft,borderRadius:12,padding:20,marginBottom:12}}>
         <div style={{fontWeight:700,color:C.main,fontSize:13,marginBottom:4}}>GOOGLE_API_KEY</div>
-        <div style={{fontSize:13,color:"#555"}}>A Google Cloud API key with Google Sheets API enabled</div>
+        <div style={{fontSize:13,color:C.muted}}>A Google Cloud API key with Google Sheets API enabled</div>
       </div>
-      <div style={{background:"#f0f4ff",borderRadius:10,padding:20}}>
+      <div style={{background:C.accentSoft,borderRadius:12,padding:20}}>
         <div style={{fontWeight:700,color:C.main,fontSize:13,marginBottom:4}}>GOOGLE_SHEET_ID</div>
-        <div style={{fontSize:13,color:"#555"}}>The spreadsheet ID from your Google Sheet URL</div>
+        <div style={{fontSize:13,color:C.muted}}>The spreadsheet ID from your Google Sheet URL</div>
       </div>
     </div>)}
 
-    {sheetTabs.length===0&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:"#aab"}}>
+    {sheetTabs.length===0&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:C.faint}}>
       <div style={{width:40,height:40,border:"4px solid "+C.sec,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite",margin:"0 auto 16px"}}/>
-      <div style={{fontSize:14,color:"#888"}}>Loading dealership list...</div>
+      <div style={{fontSize:14,color:C.faint}}>Loading dealership list...</div>
     </div>)}
 
-    {validTabs.length>0&&!selectedTab&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:"#aab"}}>
+    {validTabs.length>0&&!selectedTab&&!loading&&!custData&&(<div style={{padding:60,textAlign:"center",color:C.faint}}>
       <div style={{fontSize:48,marginBottom:12}}>{"\ud83d\udcca"}</div>
       <div style={{fontSize:16,fontWeight:600}}>Select a dealership above to view customer-specific data</div>
     </div>)}
@@ -690,25 +690,25 @@ function CustomerDataTab({sheetTabs,locations}){
       <div style={{width:40,height:40,border:"4px solid "+C.sec,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite",margin:"0 auto 16px"}}/>
       Loading customer data...
     </div>}
-    {error&&<div style={{padding:30,textAlign:"center"}}><div style={{background:"#fff3f3",border:"1px solid #fecaca",borderRadius:12,padding:20,display:"inline-block",maxWidth:600,textAlign:"left"}}>
+    {error&&<div style={{padding:30,textAlign:"center"}}><div style={{background:"#fef2f2",border:`1px solid ${C.red}33`,borderRadius:12,padding:20,display:"inline-block",maxWidth:600,textAlign:"left"}}>
       <div style={{fontWeight:700,color:C.red,marginBottom:8}}>{"\u26A0\uFE0F"} Error Loading Data</div>
-      <div style={{fontSize:13,color:"#666",lineHeight:1.6}}>{error}</div>
+      <div style={{fontSize:13,color:C.muted,lineHeight:1.6}}>{error}</div>
     </div></div>}
 
     {sorted.length>0&&(<div style={{overflowX:"auto",maxHeight:700,overflowY:"auto"}}>
       <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0}}>
         <thead><tr>{custHeaders.map((h,ci)=>(<SortHeader key={ci} label={h} sortKey={"col"+ci} sortState={sortState} onSort={onSort} align={ci===0?"left":"right"} first={ci===0} last={ci===custHeaders.length-1}/>))}</tr></thead>
-        <tbody>{sorted.map((row,i)=>(<tr key={row._idx} onMouseEnter={e=>e.currentTarget.style.background="#e4edff"} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#f4f7fc":"white"}>
-          {custHeaders.map((h,ci)=>(<td key={ci} style={{padding:"9px 12px",fontSize:13,textAlign:ci===0?"left":"right",background:i%2===0?"#f4f7fc":"white",whiteSpace:"nowrap",maxWidth:300,overflow:"hidden",textOverflow:"ellipsis",fontWeight:ci===0?600:isDollar(h)?600:400,color:ci===0?C.main:isDollar(h)?C.green:undefined}}>{fmtCell(row["col"+ci],h)}</td>))}
+        <tbody>{sorted.map((row,i)=>(<tr key={row._idx} onMouseEnter={e=>e.currentTarget.style.background=C.accentSoft} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?C.soft:C.surface}>
+          {custHeaders.map((h,ci)=>(<td key={ci} style={{padding:"9px 12px",fontSize:13,textAlign:ci===0?"left":"right",background:i%2===0?C.soft:C.surface,whiteSpace:"nowrap",maxWidth:300,overflow:"hidden",textOverflow:"ellipsis",fontWeight:ci===0?600:isDollar(h)?600:400,color:ci===0?C.main:isDollar(h)?C.green:undefined}}>{fmtCell(row["col"+ci],h)}</td>))}
         </tr>))}</tbody>
       </table>
-      <div style={{padding:"12px 0",fontSize:13,color:"#7a8a9a",textAlign:"right"}}>{sorted.length} customer records{monthFilter?" (filtered)":""}</div>
+      <div style={{padding:"12px 0",fontSize:13,color:C.faint,textAlign:"right"}}>{sorted.length} customer records{monthFilter?" (filtered)":""}</div>
     </div>)}
     {custData&&sorted.length===0&&monthFilter&&(<div style={{padding:40,textAlign:"center",color:"#999"}}>No records found for {monthOptions.find(o=>o.key===monthFilter)?.label||monthFilter}.</div>)}
   </div>);
 }
 
-async function captureTab(ref,opts={}){return html2canvas(ref,{backgroundColor:opts.bg||"#edf1f7",scale:opts.scale||2,useCORS:true,logging:false,width:opts.width||undefined});}
+async function captureTab(ref,opts={}){return html2canvas(ref,{backgroundColor:opts.bg||"#f2f3f8",scale:opts.scale||2,useCORS:true,logging:false,width:opts.width||undefined});}
 
 export default function App(){
   const[data,setData]=useState([]);const[loading,setLoading]=useState(true);const[error,setError]=useState("");
@@ -784,7 +784,7 @@ export default function App(){
           setCaptureLoc(loc);
           await new Promise(r=>setTimeout(r,500));
           if(contentRef.current){
-            const canvas=await captureTab(contentRef.current,{scale:2,bg:"#edf1f7"});
+            const canvas=await captureTab(contentRef.current,{scale:2,bg:"#f2f3f8"});
             const safeLoc=loc.replace(/[^a-zA-Z0-9 ]/g,"").replace(/\s+/g,"_");
             const fileName=`${safeLoc}_${tab.label}.jpg`;
             const imageData=canvas.toDataURL("image/jpeg",0.6).split(",")[1];
@@ -815,49 +815,55 @@ export default function App(){
     }catch(e){alert("Export failed: "+e.message);setCaptureMode(false);setCaptureLoc("");}
     setDlProgress("");setDownloading(false);};
 
-  if(loading)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:C.bg,fontFamily:"'DM Sans',system-ui,sans-serif"}}>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  if(loading)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:C.bg}}>
     <div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>{"\ud83d\udcca"}</div>
     <div style={{fontSize:20,fontWeight:700,color:C.main}}>Loading dashboard data...</div></div></div>);
 
-  if(error)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'DM Sans',system-ui,sans-serif"}}>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  if(error)return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg}}>
     <div style={{textAlign:"center",maxWidth:500,padding:40}}><div style={{fontSize:48,marginBottom:16}}>{"\u26A0\uFE0F"}</div>
     <div style={{fontSize:20,fontWeight:700,color:C.red,marginBottom:12}}>Error Loading Data</div>
-    <div style={{fontSize:15,color:"#666",marginBottom:24}}>{error}</div>
-    <button onClick={()=>fetchData(false)} style={{padding:"12px 28px",borderRadius:10,background:C.sec,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Retry</button></div></div>);
+    <div style={{fontSize:15,color:C.muted,marginBottom:24}}>{error}</div>
+    <button onClick={()=>fetchData(false)} style={{padding:"12px 28px",borderRadius:999,background:C.sec,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Retry</button></div></div>);
 
-  return(<div style={{fontFamily:"'DM Sans',system-ui,sans-serif",background:C.bg,minHeight:"100vh",color:C.main,fontSize:16}}>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-    {dlProgress&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(7,42,96,0.85)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20}}>
+  return(<div style={{background:C.bg,minHeight:"100vh",color:C.main,fontSize:16}}>
+    {dlProgress&&(<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(17,19,42,0.85)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20}}>
       <div style={{fontSize:48,animation:"spin 2s linear infinite"}}>{"\ud83d\udce6"}</div>
       <div style={{fontSize:22,fontWeight:700,color:"white"}}>{dlProgress}</div>
       <div style={{fontSize:14,color:"rgba(255,255,255,0.6)"}}>Please wait while all pages are captured...</div></div>)}
 
-    <div style={{background:`linear-gradient(135deg,${C.main} 0%,#0a3d7a 50%,${C.sec} 100%)`,padding:"28px 36px 20px",color:"white"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
+    <div style={{background:"linear-gradient(135deg, #1122d7 0%, #1a2fe0 30%, #2540e8 60%, #3355f0 100%)",position:"relative",overflow:"hidden"}}>
+      {/* Diagonal accent lines */}
+      <div style={{position:"absolute",top:0,right:0,bottom:0,left:0,opacity:0.07,backgroundImage:"repeating-linear-gradient(120deg, transparent, transparent 80px, rgba(255,255,255,0.3) 80px, rgba(255,255,255,0.3) 81px)",pointerEvents:"none"}}></div>
+      <div style={{maxWidth:1600,margin:"0 auto",padding:"32px 36px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16,position:"relative",zIndex:1}}>
         <div>
-          <div style={{fontSize:12,fontWeight:700,letterSpacing:3,opacity:0.5,textTransform:"uppercase"}}>Garber Automotive Group</div>
-          <h1 style={{margin:"4px 0 0",fontSize:28,fontWeight:900}}>Fullpath Results Dashboard</h1>
+          <div style={{marginBottom:10}}>
+            <img src="/garber-logo-white.png" alt="Garber Automotive Group" style={{height:44,objectFit:"contain"}} />
+          </div>
+          <h1 style={{margin:"4px 0 0",fontSize:28,fontWeight:780,color:"white",fontStretch:"88%"}}>Fullpath Results Dashboard</h1>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <button onClick={downloadJPG} disabled={downloading} style={{cursor:downloading?"wait":"pointer",background:"rgba(255,255,255,0.15)",padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:700,border:"1px solid rgba(255,255,255,0.25)",color:"white",transition:"all 0.2s",opacity:downloading?0.6:1}}>{"\ud83d\udcf7"} JPG</button>
-          <button onClick={downloadPDF} disabled={downloading} style={{cursor:downloading?"wait":"pointer",background:"rgba(255,255,255,0.15)",padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:700,border:"1px solid rgba(255,255,255,0.25)",color:"white",transition:"all 0.2s",opacity:downloading?0.6:1}}>{"\ud83d\udcc4"} PDF</button>
-          <button onClick={downloadAll} disabled={downloading} style={{cursor:downloading?"wait":"pointer",background:"rgba(255,255,255,0.25)",padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:700,border:"1px solid rgba(255,255,255,0.35)",color:"white",transition:"all 0.2s",opacity:downloading?0.6:1}}>{"\ud83d\udce6"} All</button>
+          <button onClick={downloadJPG} disabled={downloading} style={{cursor:downloading?"wait":"pointer",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",padding:"10px 16px",borderRadius:999,fontSize:13,fontWeight:700,border:"1px solid rgba(255,255,255,0.25)",color:"white",transition:"all 0.2s",opacity:downloading?0.6:1}}>{"\ud83d\udcf7"} JPG</button>
+          <button onClick={downloadPDF} disabled={downloading} style={{cursor:downloading?"wait":"pointer",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",padding:"10px 16px",borderRadius:999,fontSize:13,fontWeight:700,border:"1px solid rgba(255,255,255,0.25)",color:"white",transition:"all 0.2s",opacity:downloading?0.6:1}}>{"\ud83d\udcc4"} PDF</button>
+          <button onClick={downloadAll} disabled={downloading} style={{cursor:downloading?"wait":"pointer",background:"rgba(255,255,255,0.25)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",padding:"10px 16px",borderRadius:999,fontSize:13,fontWeight:700,border:"1px solid rgba(255,255,255,0.35)",color:"white",transition:"all 0.2s",opacity:downloading?0.6:1}}>{"\ud83d\udce6"} All</button>
           <div style={{width:1,height:28,background:"rgba(255,255,255,0.2)",margin:"0 4px"}}></div>
-          <button onClick={()=>fetchData(true)} disabled={refreshing||downloading} style={{cursor:refreshing?"wait":"pointer",background:"rgba(255,255,255,0.15)",padding:"10px 20px",borderRadius:10,fontSize:14,fontWeight:700,border:"1px solid rgba(255,255,255,0.25)",color:"white",display:"flex",alignItems:"center",gap:8,transition:"all 0.2s",opacity:refreshing?0.6:1}}>
+          <button onClick={()=>fetchData(true)} disabled={refreshing||downloading} style={{cursor:refreshing?"wait":"pointer",background:"rgba(255,255,255,0.15)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",padding:"10px 20px",borderRadius:999,fontSize:14,fontWeight:700,border:"1px solid rgba(255,255,255,0.25)",color:"white",display:"flex",alignItems:"center",gap:8,transition:"all 0.2s",opacity:refreshing?0.6:1}}>
             <span style={{display:"inline-block",animation:refreshing?"spin 1s linear infinite":"none"}}>{"\u21BB"}</span>
             {refreshing?"Refreshing...":"Refresh Data"}
           </button>
           <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
-      <div style={{display:"flex",gap:6,marginTop:20}}>
-        {TABS.map(t=>(<button key={t.id} onClick={()=>setActiveTab(t.id)} style={{padding:"10px 22px",border:"none",borderRadius:"10px 10px 0 0",cursor:"pointer",fontSize:14,fontWeight:700,background:activeTab===t.id?"white":"rgba(255,255,255,0.08)",color:activeTab===t.id?C.main:"rgba(255,255,255,0.6)",transition:"all 0.2s"}}>{t.icon} {t.label}</button>))}
+      <div style={{marginTop:24,background:"rgba(255,255,255,0.12)",borderRadius:"20px 20px 0 0",padding:"6px 8px 0",position:"sticky",top:0,zIndex:100,backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)"}}>
+        <div style={{display:"flex",gap:3}}>
+          {TABS.map(t=>(<button key={t.id} onClick={()=>setActiveTab(t.id)} style={{padding:"10px 22px",border:"none",borderRadius:"14px 14px 0 0",cursor:"pointer",fontSize:14,fontWeight:700,background:activeTab===t.id?C.surface:"transparent",color:activeTab===t.id?C.sec:"rgba(255,255,255,0.7)",transition:"all 0.2s"}}>{t.icon} {t.label}</button>))}
+        </div>
+        <div style={{height:14}}></div>
+      </div>
       </div>
     </div>
 
-    <div ref={contentRef} style={{padding:captureMode?"24px 28px 20px":"24px 36px 48px",maxWidth:captureMode?1200:undefined}}>
+    <div ref={contentRef} style={{maxWidth:captureMode?1200:1600,margin:"0 auto",padding:captureMode?"24px 28px 20px":"24px 36px 48px"}}>
       {activeTab==="groupSales"&&<GroupSalesTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupService"&&<GroupServiceTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
       {activeTab==="groupAds"&&<GroupAdsTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations} captureMode={captureMode} captureLoc={captureLoc}/>}
@@ -865,16 +871,16 @@ export default function App(){
       {activeTab==="dealerService"&&<DealerServiceTab data={data} periods={periods} sps={sps} setSps={setSps} locations={locations}/>}
       {activeTab==="customerData"&&(custUnlocked?<CustomerDataTab sheetTabs={sheetTabs} locations={locations}/>:(
         <div style={{display:"flex",justifyContent:"center",paddingTop:60}}>
-          <div style={{background:"white",borderRadius:14,padding:"40px 48px",boxShadow:"0 2px 12px rgba(0,0,0,0.08)",textAlign:"center",maxWidth:400,width:"100%"}}>
-            <div style={{width:56,height:56,borderRadius:"50%",background:"#f0f4ff",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={C.main} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-            <div style={{fontSize:20,fontWeight:800,color:C.main,marginBottom:8}}>Customer Data Protected</div>
-            <div style={{fontSize:14,color:"#7a8a9a",marginBottom:24}}>Enter the password to access customer-specific data.</div>
+          <div style={{background:C.surface,borderRadius:16,padding:"40px 48px",boxShadow:C.shadow,border:`1px solid ${C.line}`,textAlign:"center",maxWidth:400,width:"100%"}}>
+            <div style={{width:56,height:56,borderRadius:"50%",background:C.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={C.sec} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            <div style={{fontSize:20,fontWeight:800,fontStretch:"88%",color:C.main,marginBottom:8}}>Customer Data Protected</div>
+            <div style={{fontSize:14,color:C.faint,marginBottom:24}}>Enter the password to access customer-specific data.</div>
             <div style={{display:"flex",gap:10,justifyContent:"center"}}>
               <input type="password" value={custPwInput} onChange={e=>{setCustPwInput(e.target.value);setCustPwError(false);}}
                 onKeyDown={e=>{if(e.key==="Enter"){if(custPwInput===atob("Z2FyYmVyMTkwNw==")){setCustUnlocked(true);}else{setCustPwError(true);setCustPwInput("");}}}}
-                placeholder="Enter password" style={{padding:"12px 16px",borderRadius:10,border:custPwError?"2px solid "+C.red:"2px solid #dce3ec",fontSize:15,fontWeight:600,width:200,outline:"none",transition:"border 0.2s"}}/>
+                placeholder="Enter password" style={{padding:"12px 16px",borderRadius:999,border:custPwError?`2px solid ${C.red}`:`1px solid ${C.line}`,fontSize:15,fontWeight:600,width:200,outline:"none",transition:"border 0.2s"}}/>
               <button onClick={()=>{if(custPwInput===atob("Z2FyYmVyMTkwNw==")){setCustUnlocked(true);}else{setCustPwError(true);setCustPwInput("");}}}
-                style={{padding:"12px 24px",borderRadius:10,background:C.sec,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Unlock</button>
+                style={{padding:"12px 24px",borderRadius:999,background:C.sec,color:"white",fontWeight:700,fontSize:15,border:"none",cursor:"pointer"}}>Unlock</button>
             </div>
             {custPwError&&<div style={{color:C.red,fontSize:13,fontWeight:600,marginTop:12}}>Incorrect password. Please try again.</div>}
           </div>
